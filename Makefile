@@ -1,10 +1,5 @@
 CC ?= cc
 CFLAGS ?= -O2 -Iinclude -Wall -Wextra -std=c99
-
-CC ?= cc
-CXX ?= g++
-CFLAGS ?= -O2 -Iinclude -Wall -Wextra -std=c99
-CXXFLAGS ?= -O2 -Iinclude -Wall -Wextra -std=gnu++11
 AR ?= ar
 
 PREFIX ?= /usr/local
@@ -25,11 +20,11 @@ ctest: lib tests/unit_tests.c
 	$(CC) $(CFLAGS) -Iinclude tests/unit_tests.c -L. -lspacepacket -o tests/ctest
 
 clean:
-	rm -f src/*.o $(LIBNAME) examples/spacepacket_example tests/test_packet tests/gtest_tests
+	rm -f src/*.o $(LIBNAME) examples/spacepacket_example tests/ctest
 
 install: lib
 	mkdir -p $(PREFIX)/lib $(PREFIX)/include
 	cp $(LIBNAME) $(PREFIX)/lib/
 	cp include/space_packet.h $(PREFIX)/include/
 
-.PHONY: all lib example test gtest clean install
+.PHONY: all lib example test ctest clean install
