@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-int test_roundtrip_no_secheader(void) {
+static int test_roundtrip_no_secheader(void) {
   uint8_t payload[] = {1, 2, 3, 4, 5};
   sp_packet_t pkt = {0};
   pkt.ph.apid = 0x01;
@@ -39,7 +39,7 @@ int test_roundtrip_no_secheader(void) {
   return 0;
 }
 
-int test_roundtrip_with_secheader_crc(void) {
+static int test_roundtrip_with_secheader_crc(void) {
   uint8_t payload[] = {10, 11, 12, 13};
   const uint8_t sec_hdr[] = {0x1, 0x0}; // flags LSB=1 -> CRC present
 
@@ -77,7 +77,7 @@ int test_roundtrip_with_secheader_crc(void) {
   return 0;
 }
 
-int test_crc_mismatch(void) {
+static int test_crc_mismatch(void) {
   uint8_t payload[] = {20, 21, 22};
   const uint8_t sec_hdr[] = {0x1, 0x0};
 
@@ -111,7 +111,7 @@ int test_crc_mismatch(void) {
   return ok ? 1 : 0; // expect parse to fail (ok==0)
 }
 
-int test_malformed_short_buffer(void) {
+static int test_malformed_short_buffer(void) {
   uint8_t tiny[] = {0x00, 0x01};
   sp_packet_t parsed;
   int ok = sp_packet_parse(&parsed, tiny, sizeof(tiny));

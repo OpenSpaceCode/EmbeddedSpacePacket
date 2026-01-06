@@ -1,5 +1,9 @@
 CC ?= cc
-CFLAGS ?= -O2 -Iinclude -Wall -Wextra -std=c99
+# Stronger warnings for code quality
+CFLAGS ?= -O2 -Iinclude -Wall -Wextra -Wpedantic -Wconversion -Wshadow \
+		  -Wcast-align -Wcast-qual -Wpointer-arith -Wformat=2 \
+		  -Wmissing-prototypes -Wstrict-prototypes -Wredundant-decls -Wundef \
+		  -std=c11
 AR ?= ar
 
 PREFIX ?= /usr/local

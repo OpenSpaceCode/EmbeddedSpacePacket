@@ -80,8 +80,7 @@ size_t sp_packet_serialize(const sp_packet_t *pkt, uint8_t *buf,
 
   if (crc_present) {
     /* compute CRC over secondary header and payload */
-    size_t crc_area_len =
-        (pkt->ph.sec_hdr_flag ? pkt->sec_hdr_len : 0) + pkt->payload_len;
+    size_t crc_area_len = (pkt->ph.sec_hdr_flag ? (size_t)pkt->sec_hdr_len : (size_t)0) + (size_t)pkt->payload_len;
     uint16_t crc = sp_crc16_ccitt(&buf[6], crc_area_len);
     buf[off++] = (uint8_t)((crc >> 8) & 0xFF);
     buf[off++] = (uint8_t)(crc & 0xFF);
@@ -100,12 +99,12 @@ int sp_packet_parse(sp_packet_t *out, uint8_t *buf, size_t buf_len) {
   uint16_t second = ((uint16_t)buf[2] << 8) | buf[3];
   uint16_t length_field = ((uint16_t)buf[4] << 8) | buf[5];
 
-  out->ph.version = (first >> 13) & 0x7;
-  out->ph.type = (first >> 12) & 0x1;
-  out->ph.sec_hdr_flag = (first >> 11) & 0x1;
-  out->ph.apid = first & 0x07FF;
-  out->ph.seq_flags = (second >> 14) & 0x3;
-  out->ph.seq_count = second & 0x3FFF;
+  out->ph.version = (unsigned)((first >> 13) & 0x7);
+  out->ph.type = (unsigned)((first >> 12) & 0x1);
+  out->ph.sec_hdr_flag = (unsigned)((first >> 11) & 0x1);
+  out->ph.apid = (unsigned short)(first & 0x07FF);
+  out->ph.seq_flags = (unsigned)((second >> 14) & 0x3);
+  out->ph.seq_count = (unsigned short)(second & 0x3FFF);
   out->ph.packet_length = length_field;
 
   uint16_t total_len = (uint16_t)(length_field + 1);
@@ -194,12 +193,12 @@ void sp_set_primary_header(sp_packet_t *pkt,
                uint8_t seq_flags,
                uint16_t seq_count) {
   if (!pkt) return;
-  pkt->ph.version = version & 0x7;
-  pkt->ph.type = type & 0x1;
-  pkt->ph.sec_hdr_flag = sec_hdr_flag ? 1 : 0;
-  pkt->ph.apid = apid & 0x07FF;
-  pkt->ph.seq_flags = seq_flags & 0x3;
-  pkt->ph.seq_count = seq_count & 0x3FFF;
+  pkt->ph.version = (unsigned)(version & 0x7);
+  pkt->ph.type = (unsigned)(type & 0x1);
+  pkt->ph.sec_hdr_flag = (unsigned)(sec_hdr_flag ? 1 : 0);
+  pkt->ph.apid = (unsigned short)(apid & 0x07FF);
+  pkt->ph.seq_flags = (unsigned)(seq_flags & 0x3);
+  pkt->ph.seq_count = (unsigned short)(seq_count & 0x3FFF);
 }
 
 void sp_set_secondary_header(sp_packet_t *pkt, const uint8_t *sec_hdr, uint16_t sec_hdr_len) {
