@@ -5,22 +5,20 @@
 
 int main(void) {
   const uint8_t payload[] = {'H', 'e', 'l', 'l', 'o', ' ', 'S', 'P'};
-  sp_packet_t pkt = {0};
-  pkt.ph.apid = 0x100;
-  pkt.ph.seq_count = 1;
+  sp_packet_t pkt;
+  sp_packet_init(&pkt);
+  sp_set_primary_header(&pkt, 0 /*version*/, 0 /*type*/, 1 /*sec hdr*/, 0x100, 0 /*seq flags*/, 1);
   /* Example with a minimal secondary header containing flags and zero extra
    * bytes. flags byte LSB=1 requests CRC; byte1=0 indicates zero remaining sec
    * header bytes.
    */
   const uint8_t sec_hdr[] = {0x1, 0x0};
-  pkt.ph.sec_hdr_flag = 1;
-  pkt.sec_hdr = sec_hdr;
-  pkt.sec_hdr_len = sizeof(sec_hdr);
+  sp_set_secondary_header(&pkt, sec_hdr, sizeof(sec_hdr));
   pkt.payload = payload;
   pkt.payload_len = sizeof(payload);
 
   uint8_t buf[256];
-  size_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
+  size_t n = sp_packet_build_frame(&pkt, buf, sizeof(buf));
   if (n == 0) {
     printf("serialize failed\n");
     return 1;

@@ -71,4 +71,27 @@ int sp_packet_parse(sp_packet_t *out, uint8_t *buf, size_t buf_len);
  * 16-bit CRC. */
 uint16_t sp_crc16_ccitt(const uint8_t *data, size_t len);
 
+/* High-level helpers to build packets programmatically */
+/* Initialize packet structure to safe defaults (zeroed header and no payload). */
+void sp_packet_init(sp_packet_t *pkt);
+
+/* Configure primary header fields. Values will be masked to valid bit widths. */
+void sp_set_primary_header(sp_packet_t *pkt,
+                          uint8_t version,
+                          uint8_t type,
+                          uint8_t sec_hdr_flag,
+                          uint16_t apid,
+                          uint8_t seq_flags,
+                          uint16_t seq_count);
+
+/* Set secondary header pointer and length (application-owned memory). */
+void sp_set_secondary_header(sp_packet_t *pkt, const uint8_t *sec_hdr, uint16_t sec_hdr_len);
+
+/* Set payload pointer and length (application-owned memory). */
+void sp_set_payload(sp_packet_t *pkt, const uint8_t *payload, uint16_t payload_len);
+
+/* Build full packet frame into `buf` (header+data[+crc]). Returns bytes written or
+ * 0 on error. */
+size_t sp_packet_build_frame(const sp_packet_t *pkt, uint8_t *buf, size_t buf_len);
+
 #endif /* SPACE_PACKET_H */

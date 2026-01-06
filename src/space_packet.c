@@ -179,3 +179,42 @@ uint16_t sp_crc16_ccitt(const uint8_t *data, size_t len) {
   }
   return crc & 0xFFFF;
 }
+
+/* High-level helpers implementation */
+void sp_packet_init(sp_packet_t *pkt) {
+  if (!pkt) return;
+  memset(pkt, 0, sizeof(*pkt));
+}
+
+void sp_set_primary_header(sp_packet_t *pkt,
+               uint8_t version,
+               uint8_t type,
+               uint8_t sec_hdr_flag,
+               uint16_t apid,
+               uint8_t seq_flags,
+               uint16_t seq_count) {
+  if (!pkt) return;
+  pkt->ph.version = version & 0x7;
+  pkt->ph.type = type & 0x1;
+  pkt->ph.sec_hdr_flag = sec_hdr_flag ? 1 : 0;
+  pkt->ph.apid = apid & 0x07FF;
+  pkt->ph.seq_flags = seq_flags & 0x3;
+  pkt->ph.seq_count = seq_count & 0x3FFF;
+}
+
+void sp_set_secondary_header(sp_packet_t *pkt, const uint8_t *sec_hdr, uint16_t sec_hdr_len) {
+  if (!pkt) return;
+  pkt->sec_hdr = sec_hdr;
+  pkt->sec_hdr_len = sec_hdr_len;
+  pkt->ph.sec_hdr_flag = (sec_hdr && sec_hdr_len) ? 1 : 0;
+}
+
+void sp_set_payload(sp_packet_t *pkt, const uint8_t *payload, uint16_t payload_len) {
+  if (!pkt) return;
+  pkt->payload = payload;
+  pkt->payload_len = payload_len;
+}
+
+size_t sp_packet_build_frame(const sp_packet_t *pkt, uint8_t *buf, size_t buf_len) {
+  return sp_packet_serialize(pkt, buf, buf_len);
+}
