@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools and gtest
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libgtest-dev
+          # Build and install gtest binaries (Ubuntu provides sources only)
+          pushd /usr/src/gtest || exit 0
+          cmake . && make || true
+          sudo cp libgtest*.a /usr/lib/ || true
+          popd || true
+      - name: Build
+        run: make
+      - name: Run C tests
+        run: |
+          if [ -x tests/test_packet ]; then
+            ./tests/test_packet
+          else
+            echo "tests/test_packet missing"; exit 1
+          fi
+      - name: Build and run C tests
+        run: |
+          make ctest
+          if [ -x tests/ctest ]; then
+            ./tests/ctest
+          elif [ -x tests/ctest ] || [ -x tests/ctest ]; then
+            ./tests/ctest
+          elif [ -x tests/ctest ]; then
+            ./tests/ctest
+          else
+            # older make target produces tests/ctest or tests/ctest
+            if [ -x tests/ctest ]; then ./tests/ctest; else echo "ctest binary missing"; exit 1; fi
+          fi
