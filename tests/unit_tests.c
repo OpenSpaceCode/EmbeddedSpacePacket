@@ -45,6 +45,7 @@ static int test_roundtrip_with_secheader_crc(void) {
 
   sp_packet_t pkt = {0};
   pkt.ph.apid = 0x123;
+  pkt.ph.seq_flags = SP_SEQ_FLAG_UNSEGMENTED;
   pkt.ph.seq_count = 0x3;
   pkt.ph.sec_hdr_flag = 1;
   pkt.sec_hdr = sec_hdr;
@@ -70,6 +71,11 @@ static int test_roundtrip_with_secheader_crc(void) {
   }
 
   ASSERT_EQ_INT(parsed.ph.apid, pkt.ph.apid);
+  ASSERT_EQ_INT(parsed.ph.seq_count, pkt.ph.seq_count);
+  ASSERT_EQ_INT(parsed.ph.seq_flags, pkt.ph.seq_flags);
+  ASSERT_EQ_INT(parsed.ph.sec_hdr_flag, pkt.ph.sec_hdr_flag);
+  ASSERT_EQ_INT(parsed.sec_hdr_len, pkt.sec_hdr_len);
+  ASSERT_EQ_MEM(parsed.sec_hdr, pkt.sec_hdr, pkt.sec_hdr_len);
   ASSERT_EQ_INT(parsed.payload_len, pkt.payload_len);
   ASSERT_EQ_MEM(parsed.payload, pkt.payload, pkt.payload_len);
 

@@ -7,7 +7,7 @@ int main(void) {
   const uint8_t payload[] = {'H', 'e', 'l', 'l', 'o', ' ', 'S', 'P'};
   sp_packet_t pkt;
   sp_packet_init(&pkt);
-  sp_set_primary_header(&pkt, 0 /*version*/, 0 /*type*/, 1 /*sec hdr*/, 0x100, 0 /*seq flags*/, 1);
+  sp_set_primary_header(&pkt, 0 /*version*/, 0 /*type*/, 1 /*sec hdr*/, 0x100, SP_SEQ_FLAG_UNSEGMENTED /*seq flags*/, 1);
   /* Example with a minimal secondary header containing flags and zero extra
    * bytes. flags byte LSB=1 requests CRC; byte1=0 indicates zero remaining sec
    * header bytes.
@@ -35,7 +35,7 @@ int main(void) {
     return 2;
   }
 
-  printf("Parsed APID=0x%03X seq=%u payload_len=%u\n", parsed.ph.apid,
+  printf("Parsed APID=0x%03X seq count=%u payload_len=%u\n", parsed.ph.apid,
          parsed.ph.seq_count, parsed.payload_len);
   printf("Payload as ASCII: ");
   fwrite(parsed.payload, 1, parsed.payload_len, stdout);

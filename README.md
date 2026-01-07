@@ -19,7 +19,7 @@ Build & run (host):
 
 3. Run tests:
 
-	./tests/test_packet
+	./tests/ctest
 
 Notes
 - This is a minimal, small-footprint implementation designed for embedded use.

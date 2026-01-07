@@ -190,7 +190,7 @@ void sp_set_primary_header(sp_packet_t *pkt,
                uint8_t type,
                uint8_t sec_hdr_flag,
                uint16_t apid,
-               uint8_t seq_flags,
+               sp_seq_flag_t seq_flags,
                uint16_t seq_count) {
   if (!pkt) return;
   pkt->ph.version = (unsigned)(version & 0x7);

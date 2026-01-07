@@ -7,6 +7,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
+typedef enum {
+  SP_SEQ_FLAG_UNSEGMENTED = 0,
+  SP_SEQ_FLAG_FIRST_SEGMENT = 1,
+  SP_SEQ_FLAG_CONTINUING_SEGMENT = 2,
+  SP_SEQ_FLAG_LAST_SEGMENT = 3
+} sp_seq_flag_t;
+
 /* Primary header is 6 bytes (CCSDS-like):
  * - bytes 0-1: version(3), type(1), sec_hdr(1), apid(11)
  * - bytes 2-3: seq_flags(2), seq_count(14)
@@ -28,11 +35,11 @@ typedef struct {
 #endif
   /* sequence control */
 #if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-  unsigned seq_flags : 2;
+  sp_seq_flag_t seq_flags : 2;
   unsigned seq_count : 14;
 #else
   unsigned seq_count : 14;
-  unsigned seq_flags : 2;
+  sp_seq_flag_t seq_flags : 2;
 #endif
   uint16_t packet_length;
 } sp_primary_header_t;
@@ -81,7 +88,7 @@ void sp_set_primary_header(sp_packet_t *pkt,
                           uint8_t type,
                           uint8_t sec_hdr_flag,
                           uint16_t apid,
-                          uint8_t seq_flags,
+                          sp_seq_flag_t seq_flags,
                           uint16_t seq_count);
 
 /* Set secondary header pointer and length (application-owned memory). */
