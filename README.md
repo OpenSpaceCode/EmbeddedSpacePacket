@@ -84,13 +84,6 @@ make ctest
 make clean
 ```
 
-### Install
-
-```bash
-make install              # Installs to /usr/local by default
-make install PREFIX=~/opt # Custom install prefix
-```
-
 ## Quick Start
 
 ### Create and Serialize a Space Packet
@@ -220,40 +213,6 @@ typedef enum {
     SP_SEQ_FLAG_CONTINUING_SEGMENT = 2,
     SP_SEQ_FLAG_LAST_SEGMENT       = 3
 } sp_seq_flag_t;
-```
-
-## Packet Structure
-
-```
- 0                   1                   2                   3
- 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|Ver(3)|T|S|        APID (11)        |SF(2)|   Seq Count (14)   |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|          Packet Length (16)         |  Secondary Header ...   |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|                     Payload / User Data                        |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|              CRC-16-CCITT (optional, 2 bytes)                  |
-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-
-Ver = Version (3 bits, default 0)   T = Packet Type (0=TM, 1=TC)
-S   = Secondary Header Flag          SF = Sequence Flags
-Packet Length = (Packet Data Field octets) - 1
-```
-
-## Protocol Stack Context
-
-```
-┌─────────────────────────────────────┐
-│   Application / Mission Software    │
-├─────────────────────────────────────┤
-│   CCSDS Space Packet (this lib)     │  Primary header + optional sec header + payload
-├─────────────────────────────────────┤
-│   Transfer / Link Layer             │  e.g. SpaceWire, UART, SpaceFibre
-├─────────────────────────────────────┤
-│   Physical                          │  Serial, fiber, RF
-└─────────────────────────────────────┘
 ```
 
 ## Memory Usage (Estimated)
