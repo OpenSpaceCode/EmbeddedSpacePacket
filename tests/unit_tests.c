@@ -124,11 +124,410 @@ static int test_malformed_short_buffer(void) {
   return ok ? 1 : 0; // expect parse to fail
 }
 
+/* Test high-level API: sp_packet_init, sp_set_*, sp_packet_build_frame */
+static int test_highlevel_api(void) {
+  sp_packet_t pkt;
+  sp_packet_init(&pkt);
+  
+  const uint8_t payload[] = {'T', 'E', 'S', 'T'};
+  const uint8_t sec_hdr[] = {0x01, 0x00};
+  
+  sp_set_primary_header(&pkt, 0, 0, 1, 0x456, SP_SEQ_FLAG_FIRST_SEGMENT, 42);
+  sp_set_secondary_header(&pkt, sec_hdr, sizeof(sec_hdr));
+  sp_set_payload(&pkt, payload, sizeof(payload));
+  
+  uint8_t buf[256];
+  size_t n = sp_packet_build_frame(&pkt, buf, sizeof(buf));
+  if (n == 0) return 1;
+  
+  sp_packet_t parsed;
+  int ok = sp_packet_parse(&parsed, buf, n);
+  if (!ok) return 1;
+  
+  ASSERT_EQ_INT(parsed.ph.apid, 0x456);
+  ASSERT_EQ_INT(parsed.ph.seq_count, 42);
+  ASSERT_EQ_INT(parsed.ph.seq_flags, SP_SEQ_FLAG_FIRST_SEGMENT);
+  ASSERT_EQ_INT(parsed.payload_len, sizeof(payload));
+  ASSERT_EQ_MEM(parsed.payload, payload, sizeof(payload));
+  
+  return 0;
+}
+
+/* Test NULL pointer handling */
+static int test_null_pointers(void) {
+  sp_packet_t pkt = {0};
+  uint8_t buf[64];
+  
+  // sp_packet_serialize_size with NULL
+  size_t sz = sp_packet_serialize_size(NULL);
+  if (sz != 0) return 1;
+  
+  // sp_packet_serialize with NULL pkt
+  sz = sp_packet_serialize(NULL, buf, sizeof(buf));
+  if (sz != 0) return 1;
+  
+  // sp_packet_serialize with NULL buf
+  sz = sp_packet_serialize(&pkt, NULL, sizeof(buf));
+  if (sz != 0) return 1;
+  
+  // sp_packet_parse with NULL out
+  int ok = sp_packet_parse(NULL, buf, sizeof(buf));
+  if (ok) return 1;
+  
+  // sp_packet_parse with NULL buf
+  ok = sp_packet_parse(&pkt, NULL, sizeof(buf));
+  if (ok) return 1;
+  
+  // sp_packet_init with NULL
+  sp_packet_init(NULL); // should not crash
+  
+  // sp_set_primary_header with NULL
+  sp_set_primary_header(NULL, 0, 0, 0, 0, SP_SEQ_FLAG_UNSEGMENTED, 0); // should not crash
+  
+  // sp_set_secondary_header with NULL
+  sp_set_secondary_header(NULL, buf, 10); // should not crash
+  
+  // sp_set_payload with NULL
+  sp_set_payload(NULL, buf, 10); // should not crash
+  
+  return 0;
+}
+
+/* Test secondary header without CRC */
+static int test_secheader_no_crc(void) {
+  sp_packet_t pkt;
+  sp_packet_init(&pkt);
+  
+  const uint8_t payload[] = {0xAA, 0xBB, 0xCC};
+  const uint8_t sec_hdr[] = {0x00, 0x00}; // flags LSB=0 -> no CRC
+  
+  sp_set_primary_header(&pkt, 0, 0, 1, 0x200, SP_SEQ_FLAG_UNSEGMENTED, 10);
+  sp_set_secondary_header(&pkt, sec_hdr, sizeof(sec_hdr));
+  sp_set_payload(&pkt, payload, sizeof(payload));
+  
+  uint8_t buf[256];
+  size_t n = sp_packet_build_frame(&pkt, buf, sizeof(buf));
+  if (n == 0) return 1;
+  
+  sp_packet_t parsed;
+  int ok = sp_packet_parse(&parsed, buf, n);
+  if (!ok) return 1;
+  
+  ASSERT_EQ_INT(parsed.ph.apid, 0x200);
+  ASSERT_EQ_INT(parsed.payload_len, sizeof(payload));
+  ASSERT_EQ_MEM(parsed.payload, payload, sizeof(payload));
+  
+  return 0;
+}
+
+/* Test different sequence flags */
+static int test_sequence_flags(void) {
+  const sp_seq_flag_t flags[] = {
+    SP_SEQ_FLAG_UNSEGMENTED,
+    SP_SEQ_FLAG_FIRST_SEGMENT,
+    SP_SEQ_FLAG_CONTINUING_SEGMENT,
+    SP_SEQ_FLAG_LAST_SEGMENT
+  };
+  
+  for (size_t i = 0; i < sizeof(flags)/sizeof(flags[0]); i++) {
+    sp_packet_t pkt;
+    sp_packet_init(&pkt);
+    
+    const uint8_t payload[] = {(uint8_t)i};
+    sp_set_primary_header(&pkt, 0, 0, 0, 0x100, flags[i], (uint16_t)i);
+    sp_set_payload(&pkt, payload, sizeof(payload));
+    
+    uint8_t buf[256];
+    size_t n = sp_packet_build_frame(&pkt, buf, sizeof(buf));
+    if (n == 0) return 1;
+    
+    sp_packet_t parsed;
+    int ok = sp_packet_parse(&parsed, buf, n);
+    if (!ok) return 1;
+    
+    ASSERT_EQ_INT(parsed.ph.seq_flags, flags[i]);
+  }
+  
+  return 0;
+}
+
+/* Test different version and type values */
+static int test_version_and_type(void) {
+  sp_packet_t pkt;
+  sp_packet_init(&pkt);
+  
+  const uint8_t payload[] = {0x99};
+  
+  // Test version=7 (max 3 bits), type=1
+  sp_set_primary_header(&pkt, 7, 1, 0, 0x7FF, SP_SEQ_FLAG_UNSEGMENTED, 0x3FFF);
+  sp_set_payload(&pkt, payload, sizeof(payload));
+  
+  uint8_t buf[256];
+  size_t n = sp_packet_build_frame(&pkt, buf, sizeof(buf));
+  if (n == 0) return 1;
+  
+  sp_packet_t parsed;
+  int ok = sp_packet_parse(&parsed, buf, n);
+  if (!ok) return 1;
+  
+  ASSERT_EQ_INT(parsed.ph.version, 7);
+  ASSERT_EQ_INT(parsed.ph.type, 1);
+  ASSERT_EQ_INT(parsed.ph.apid, 0x7FF);
+  ASSERT_EQ_INT(parsed.ph.seq_count, 0x3FFF);
+  
+  return 0;
+}
+
+/* Test buffer too small for serialization */
+static int test_buffer_too_small(void) {
+  sp_packet_t pkt;
+  sp_packet_init(&pkt);
+  
+  const uint8_t payload[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+  sp_set_primary_header(&pkt, 0, 0, 0, 0x100, SP_SEQ_FLAG_UNSEGMENTED, 1);
+  sp_set_payload(&pkt, payload, sizeof(payload));
+  
+  uint8_t buf[8]; // too small
+  size_t n = sp_packet_build_frame(&pkt, buf, sizeof(buf));
+  
+  return (n == 0) ? 0 : 1; // expect failure
+}
+
+/* Test empty payload */
+static int test_empty_payload(void) {
+  sp_packet_t pkt;
+  sp_packet_init(&pkt);
+  
+  sp_set_primary_header(&pkt, 0, 0, 0, 0x100, SP_SEQ_FLAG_UNSEGMENTED, 1);
+  sp_set_payload(&pkt, NULL, 0);
+  
+  uint8_t buf[256];
+  size_t n = sp_packet_build_frame(&pkt, buf, sizeof(buf));
+  if (n == 0) return 1;
+  
+  sp_packet_t parsed;
+  int ok = sp_packet_parse(&parsed, buf, n);
+  return ok ? 1 : 0;
+}
+
+/* Test CRC computation directly */
+static int test_crc_computation(void) {
+  const uint8_t data[] = {0x01, 0x02, 0x03, 0x04};
+  uint16_t crc = sp_crc16_ccitt(data, sizeof(data));
+  
+  // CRC should be deterministic
+  uint16_t crc2 = sp_crc16_ccitt(data, sizeof(data));
+  ASSERT_EQ_INT(crc, crc2);
+  
+  // Empty data
+  uint16_t crc_empty = sp_crc16_ccitt(data, 0);
+  ASSERT_EQ_INT(crc_empty, 0xFFFF); // Initial value
+  
+  return 0;
+}
+
+/* Test parse error: buffer too short for secondary header */
+static int test_parse_short_secheader(void) {
+  // Create a valid packet header but truncate it
+  uint8_t buf[8];
+  // Set sec_hdr_flag = 1
+  buf[0] = 0x08; // version=0, type=0, sec_hdr=1, apid[10:8]=0
+  buf[1] = 0x00; // apid[7:0]=0
+  buf[2] = 0x00; // seq_flags=0, seq_count[13:8]=0
+  buf[3] = 0x00; // seq_count[7:0]=0
+  buf[4] = 0x00; // packet_length[15:8]=0
+  buf[5] = 0x01; // packet_length[7:0]=1 (means 2 bytes in data field)
+  // But only provide 1 byte when 2 are needed for sec header
+  buf[6] = 0x00;
+  
+  sp_packet_t parsed;
+  int ok = sp_packet_parse(&parsed, buf, 7);
+  
+  return ok ? 1 : 0; // expect parse to fail
+}
+
+/* Test parse error: buffer too short for payload with CRC */
+static int test_parse_short_payload_crc(void) {
+  // Create packet with sec_hdr_flag=1, CRC requested, but truncated
+  uint8_t buf[10];
+  buf[0] = 0x08; // sec_hdr_flag = 1
+  buf[1] = 0x00;
+  buf[2] = 0x00;
+  buf[3] = 0x00;
+  buf[4] = 0x00;
+  buf[5] = 0x05; // packet_length = 5 (6 bytes data field)
+  buf[6] = 0x01; // sec_hdr flags: CRC present
+  buf[7] = 0x00; // sec_hdr remaining length = 0
+  // Should have payload + CRC, but buffer is too short
+  
+  sp_packet_t parsed;
+  int ok = sp_packet_parse(&parsed, buf, 8);
+  
+  return ok ? 1 : 0; // expect parse to fail
+}
+
+/* Test secondary header with extended data */
+static int test_secheader_extended(void) {
+  sp_packet_t pkt;
+  sp_packet_init(&pkt);
+  
+  const uint8_t payload[] = {0xDE, 0xAD};
+  const uint8_t sec_hdr[] = {0x00, 0x03, 0xAA, 0xBB, 0xCC}; // flags=0 (no CRC), 3 extra bytes
+  
+  sp_set_primary_header(&pkt, 1, 0, 1, 0x300, SP_SEQ_FLAG_CONTINUING_SEGMENT, 99);
+  sp_set_secondary_header(&pkt, sec_hdr, sizeof(sec_hdr));
+  sp_set_payload(&pkt, payload, sizeof(payload));
+  
+  uint8_t buf[256];
+  size_t n = sp_packet_build_frame(&pkt, buf, sizeof(buf));
+  if (n == 0) return 1;
+  
+  sp_packet_t parsed;
+  int ok = sp_packet_parse(&parsed, buf, n);
+  if (!ok) return 1;
+  
+  ASSERT_EQ_INT(parsed.sec_hdr_len, 5);
+  ASSERT_EQ_MEM(parsed.sec_hdr, sec_hdr, sizeof(sec_hdr));
+  ASSERT_EQ_INT(parsed.ph.version, 1);
+  
+  return 0;
+}
+
+/* Test masking of bit fields */
+static int test_bitfield_masking(void) {
+  sp_packet_t pkt;
+  sp_packet_init(&pkt);
+  
+  const uint8_t payload[] = {0xFF};
+  
+  // Set values that exceed bit widths - should be masked
+  sp_set_primary_header(&pkt, 
+    0xFF,   // version: only 3 bits, should mask to 7
+    0xFF,   // type: only 1 bit, should mask to 1
+    0,
+    0xFFFF, // apid: only 11 bits, should mask to 0x7FF
+    3,      // seq_flags: only 2 bits (already valid)
+    0xFFFF  // seq_count: only 14 bits, should mask to 0x3FFF
+  );
+  sp_set_payload(&pkt, payload, sizeof(payload));
+  
+  uint8_t buf[256];
+  size_t n = sp_packet_build_frame(&pkt, buf, sizeof(buf));
+  if (n == 0) return 1;
+  
+  sp_packet_t parsed;
+  int ok = sp_packet_parse(&parsed, buf, n);
+  if (!ok) return 1;
+  
+  ASSERT_EQ_INT(parsed.ph.version, 7);
+  ASSERT_EQ_INT(parsed.ph.type, 1);
+  ASSERT_EQ_INT(parsed.ph.apid, 0x7FF);
+  ASSERT_EQ_INT(parsed.ph.seq_count, 0x3FFF);
+  
+  return 0;
+}
+
+/* Test setting secondary header with NULL clears flag */
+static int test_secheader_null(void) {
+  sp_packet_t pkt;
+  sp_packet_init(&pkt);
+  
+  const uint8_t payload[] = {0x42};
+  
+  sp_set_primary_header(&pkt, 0, 0, 1, 0x100, SP_SEQ_FLAG_UNSEGMENTED, 1);
+  sp_set_secondary_header(&pkt, NULL, 0); // Should clear sec_hdr_flag
+  sp_set_payload(&pkt, payload, sizeof(payload));
+  
+  ASSERT_EQ_INT(pkt.ph.sec_hdr_flag, 0);
+  
+  uint8_t buf[256];
+  size_t n = sp_packet_build_frame(&pkt, buf, sizeof(buf));
+  if (n == 0) return 1;
+  
+  sp_packet_t parsed;
+  int ok = sp_packet_parse(&parsed, buf, n);
+  if (!ok) return 1;
+  
+  ASSERT_EQ_INT(parsed.ph.sec_hdr_flag, 0);
+  ASSERT_EQ_INT(parsed.sec_hdr_len, 0);
+  
+  return 0;
+}
+
+static int test_parse_crc_total_too_small(void) {
+  uint8_t buf[8] = {
+    0x08, 0x00, /* sec_hdr_flag=1 */
+    0x00, 0x00, /* seq */
+    0x00, 0x01, /* length_field=1 => total_len=2 */
+    0x01, 0x00  /* sec hdr: CRC present, rem_len=0 => sec_len=2 */
+  };
+
+  sp_packet_t parsed;
+  int ok = sp_packet_parse(&parsed, buf, sizeof(buf));
+  return ok ? 1 : 0;
+}
+
+static int test_parse_no_crc_total_too_small(void) {
+  uint8_t buf[8] = {
+    0x08, 0x00, /* sec_hdr_flag=1 */
+    0x00, 0x00, /* seq */
+    0x00, 0x00, /* length_field=0 => total_len=1 */
+    0x00, 0x00  /* sec hdr: CRC absent, rem_len=0 => sec_len=2 */
+  };
+
+  sp_packet_t parsed;
+  int ok = sp_packet_parse(&parsed, buf, sizeof(buf));
+  return ok ? 1 : 0;
+}
+
+static int test_parse_no_crc_payload_truncated(void) {
+  uint8_t buf[8] = {
+    0x08, 0x00, /* sec_hdr_flag=1 */
+    0x00, 0x00, /* seq */
+    0x00, 0x02, /* length_field=2 => total_len=3, payload should be 1 byte */
+    0x00, 0x00  /* sec hdr: CRC absent, rem_len=0 => sec_len=2 */
+  };
+
+  sp_packet_t parsed;
+  int ok = sp_packet_parse(&parsed, buf, sizeof(buf));
+  return ok ? 1 : 0;
+}
+
+static int test_parse_declared_secheader_too_long(void) {
+  uint8_t buf[8] = {
+    0x08, 0x00, /* sec_hdr_flag=1 */
+    0x00, 0x00, /* seq */
+    0x00, 0x05, /* any total_len >= 2 */
+    0x00, 0x03  /* sec hdr: rem_len=3 => sec_len=5, but only 2 bytes present */
+  };
+
+  sp_packet_t parsed;
+  int ok = sp_packet_parse(&parsed, buf, sizeof(buf));
+  return ok ? 1 : 0;
+}
+
 int main(void) {
   RUN_TEST(test_roundtrip_no_secheader);
   RUN_TEST(test_roundtrip_with_secheader_crc);
   RUN_TEST(test_crc_mismatch);
   RUN_TEST(test_malformed_short_buffer);
+  RUN_TEST(test_highlevel_api);
+  RUN_TEST(test_null_pointers);
+  RUN_TEST(test_secheader_no_crc);
+  RUN_TEST(test_sequence_flags);
+  RUN_TEST(test_version_and_type);
+  RUN_TEST(test_buffer_too_small);
+  RUN_TEST(test_empty_payload);
+  RUN_TEST(test_crc_computation);
+  RUN_TEST(test_parse_short_secheader);
+  RUN_TEST(test_parse_short_payload_crc);
+  RUN_TEST(test_secheader_extended);
+  RUN_TEST(test_bitfield_masking);
+  RUN_TEST(test_secheader_null);
+  RUN_TEST(test_parse_crc_total_too_small);
+  RUN_TEST(test_parse_no_crc_total_too_small);
+  RUN_TEST(test_parse_no_crc_payload_truncated);
+  RUN_TEST(test_parse_declared_secheader_too_long);
 
   if (cunit_overall_failures == 0) {
     printf("ALL TESTS PASSED\n");
