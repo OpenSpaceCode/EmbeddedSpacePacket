@@ -58,6 +58,10 @@ dkms.conf
 examples/spacepacket_example
 tests/ctest
 build/
+coverage.html
+*.gcov
+*.gcda
+*.gcno
 
 # Editor configs
 .vscode/

@@ -43,6 +43,9 @@ EmbeddedSpacePacket/
 ├── tests/
 │   ├── cunit.h              # Minimal test framework
 │   └── unit_tests.c         # Unit tests
+├── scripts/
+│   └── coverage_html.sh     # Coverage report
+├── build/                   # Build artifacts 
 ├── Makefile
 └── README.md
 ```
@@ -55,27 +58,47 @@ EmbeddedSpacePacket/
 make
 ```
 
-Builds the static library, the example binary and the test binary.
+Builds the static library, the example binary and the test binary in `build/`.
 
 ### Build Library Only
 
 ```bash
 make lib
-# Produces: libspacepacket.a
+# Produces: build/libspacepacket.a
 ```
 
 ### Build Example
 
 ```bash
 make example
-./examples/spacepacket_example
+./build/examples/spacepacket_example
 ```
 
 ### Run Tests
 
 ```bash
 make ctest
-./tests/ctest
+./build/tests/ctest
+```
+
+### Coverage (HTML)
+
+Requires `gcovr` installed in your system:
+
+```bash
+sudo apt install gcovr
+```
+
+Generate coverage report:
+
+```bash
+make coverage-html
+```
+
+Output report:
+
+```bash
+build/coverage/index.html
 ```
 
 ### Clean
