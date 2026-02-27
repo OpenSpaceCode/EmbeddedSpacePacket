@@ -14,6 +14,7 @@ LIB_PATH = $(BUILD_DIR)/$(LIBNAME)
 OBJ_PATH = $(BUILD_DIR)/src/space_packet.o
 EXAMPLE_PATH = $(BUILD_DIR)/examples/spacepacket_example
 CTEST_PATH = $(BUILD_DIR)/tests/ctest
+COVERAGE_MIN ?= 95
 
 all: lib example test ctest
 
@@ -43,6 +44,10 @@ $(CTEST_PATH): lib tests/unit_tests.c
 coverage-html:
 	bash scripts/coverage_html.sh
 
+ci:
+	bash scripts/coverage_html.sh
+	gcovr -r "$$PWD" --filter "$$PWD/src" --txt-summary --fail-under-line $(COVERAGE_MIN)
+
 clean:
 	rm -rf $(BUILD_DIR)
 
@@ -51,4 +56,4 @@ install: lib
 	cp $(LIB_PATH) $(PREFIX)/lib/$(LIBNAME)
 	cp include/space_packet.h $(PREFIX)/include/
 
-.PHONY: all lib example test ctest coverage-html clean install
+.PHONY: all lib example test ctest coverage-html ci clean install
