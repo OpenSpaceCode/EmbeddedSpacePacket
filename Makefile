@@ -42,7 +42,7 @@ $(CTEST_PATH): lib tests/unit_tests.c
 	$(CC) $(CFLAGS) -Iinclude tests/unit_tests.c $(LIB_PATH) -o $(CTEST_PATH)
 
 coverage-html:
-	bash scripts/coverage_html.sh
+	bash tools/coverage_html.sh
 
 ci:
 	bash scripts/coverage_html.sh
