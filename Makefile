@@ -37,9 +37,9 @@ $(EXAMPLE_PATH): lib examples/main.c
 
 ctest: $(CTEST_PATH)
 
-$(CTEST_PATH): lib tests/unit_tests.c
+$(CTEST_PATH): lib tests/unit_tests.c tests/test_space_packet.c
 	mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -Iinclude tests/unit_tests.c $(LIB_PATH) -o $(CTEST_PATH)
+	$(CC) $(CFLAGS) -Iinclude tests/unit_tests.c tests/test_space_packet.c $(LIB_PATH) -o $(CTEST_PATH)
 
 test: ctest
 	./$(CTEST_PATH)
