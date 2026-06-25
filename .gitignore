@@ -55,13 +55,6 @@ dkms.conf
 *.dwo
 
 # project build directories
-examples/spacepacket_example
-tests/ctest
-coverage.html
-*.gcov
-*.gcda
-*.gcno
-
 build/
 .github/
 .vscode/
