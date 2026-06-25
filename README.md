@@ -6,6 +6,7 @@ following the international standard.
 ## Standards Compliance
 
 - **CCSDS 133.0-B-2**: Space Packet Protocol
+- **CCSDS 130.3-G-1**: Space Packet Protocols Greenbook
 
 ## Features
 
