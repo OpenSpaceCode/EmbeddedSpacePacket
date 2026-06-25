@@ -1,3 +1,7 @@
+/**
+ * @file space_packet.c
+ * @brief CCSDS Space Packet Protocol — serialiser, parser and header helpers.
+ */
 #include "../include/space_packet.h"
 
 #include <string.h>
