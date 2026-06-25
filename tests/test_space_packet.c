@@ -9,7 +9,7 @@ static int test_roundtrip_basic(void)
 {
     const uint8_t data[] = {1, 2, 3, 4, 5};
     sp_packet_t pkt = {0};
-    pkt.ph.apid      = 0x01;
+    pkt.ph.apid = 0x01;
     pkt.ph.seq_count = 0x2;
     sp_set_data(&pkt, data, sizeof(data));
 
@@ -49,10 +49,10 @@ static int test_roundtrip_with_secheader_flag(void)
     const uint8_t data[] = {0x00, 0x00, 10, 11, 12, 13};
 
     sp_packet_t pkt = {0};
-    pkt.ph.apid         = 0x123;
+    pkt.ph.apid = 0x123;
     pkt.ph.sec_hdr_flag = 1;
-    pkt.ph.seq_flags    = SP_SEQ_FLAG_UNSEGMENTED;
-    pkt.ph.seq_count    = 0x3;
+    pkt.ph.seq_flags = SP_SEQ_FLAG_UNSEGMENTED;
+    pkt.ph.seq_count = 0x3;
     sp_set_data(&pkt, data, sizeof(data));
 
     size_t buf_len = sp_packet_serialize_size(&pkt);
@@ -276,9 +276,9 @@ static int test_bitfield_masking(void)
     if (!ok)
         return 1;
 
-    ASSERT_EQ_INT(parsed.ph.version, 0);      /* always 0, not masked from input */
-    ASSERT_EQ_INT(parsed.ph.type, 1);          /* 0xFF & 1 */
-    ASSERT_EQ_INT(parsed.ph.apid, 0x7FF);     /* 0xFFFF & 0x7FF */
+    ASSERT_EQ_INT(parsed.ph.version, 0);        /* always 0, not masked from input */
+    ASSERT_EQ_INT(parsed.ph.type, 1);           /* 0xFF & 1 */
+    ASSERT_EQ_INT(parsed.ph.apid, 0x7FF);       /* 0xFFFF & 0x7FF */
     ASSERT_EQ_INT(parsed.ph.seq_count, 0x3FFF); /* 0xFFFF & 0x3FFF */
 
     return 0;
@@ -331,7 +331,7 @@ pus_test_result_t test_space_packet_run_all(void)
     RUN_TEST(test_parse_data_far_too_short);
 
     pus_test_result_t r;
-    r.total  = cunit_total_tests;
+    r.total = cunit_total_tests;
     r.passed = cunit_total_tests - cunit_overall_failures;
     return r;
 }

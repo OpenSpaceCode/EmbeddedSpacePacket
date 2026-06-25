@@ -16,8 +16,7 @@ static uint16_t crc16_ccitt(const uint8_t *data, size_t len)
     {
         crc ^= (uint16_t)((uint16_t)data[i] << 8);
         for (int k = 0; k < 8; ++k)
-            crc = (crc & 0x8000u) ? (uint16_t)((crc << 1) ^ 0x1021u)
-                                  : (uint16_t)(crc << 1);
+            crc = (crc & 0x8000u) ? (uint16_t)((crc << 1) ^ 0x1021u) : (uint16_t)(crc << 1);
     }
     return crc;
 }
@@ -33,7 +32,7 @@ int main(void)
      * The library copies this block verbatim; its internal structure is
      * entirely the application's responsibility.
      */
-    const uint8_t sec_hdr[]      = {0x01, 0x00}; /* flags: CRC present */
+    const uint8_t sec_hdr[] = {0x01, 0x00}; /* flags: CRC present */
     const uint8_t user_payload[] = {'H', 'e', 'l', 'l', 'o', ' ', 'S', 'P'};
 
     uint8_t pkt_data[sizeof(sec_hdr) + sizeof(user_payload) + 2];
@@ -49,11 +48,11 @@ int main(void)
     sp_packet_t pkt;
     sp_packet_init(&pkt);
     sp_set_primary_header(&pkt,
-                          0,                       /* type: telemetry */
-                          1,                       /* secondary header present */
-                          0x100,                   /* APID */
+                          0,     /* type: telemetry */
+                          1,     /* secondary header present */
+                          0x100, /* APID */
                           SP_SEQ_FLAG_UNSEGMENTED,
-                          1                        /* sequence count */);
+                          1 /* sequence count */);
     sp_set_data(&pkt, pkt_data, (uint16_t)off);
 
     uint8_t buf[256];
@@ -82,10 +81,9 @@ int main(void)
         printf("data too short to contain CRC\n");
         return 3;
     }
-    size_t crc_area         = parsed.data_len - 2;
-    uint16_t crc_recv       = ((uint16_t)parsed.data[crc_area] << 8) |
-                               parsed.data[crc_area + 1];
-    uint16_t crc_calc       = crc16_ccitt(parsed.data, crc_area);
+    size_t crc_area = parsed.data_len - 2;
+    uint16_t crc_recv = ((uint16_t)parsed.data[crc_area] << 8) | parsed.data[crc_area + 1];
+    uint16_t crc_calc = crc16_ccitt(parsed.data, crc_area);
     if (crc_recv != crc_calc)
     {
         printf("CRC mismatch (recv=0x%04X calc=0x%04X)\n", crc_recv, crc_calc);
@@ -93,12 +91,14 @@ int main(void)
     }
 
     /* Recover payload: skip 2-byte secondary header, drop 2-byte CRC. */
-    size_t sec_total    = (size_t)2 + parsed.data[1];
-    const uint8_t *pay  = parsed.data + sec_total;
-    size_t pay_len      = crc_area - sec_total;
+    size_t sec_total = (size_t)2 + parsed.data[1];
+    const uint8_t *pay = parsed.data + sec_total;
+    size_t pay_len = crc_area - sec_total;
 
     printf("APID=0x%03X seq_count=%u data_len=%u CRC OK\n",
-           parsed.ph.apid, parsed.ph.seq_count, parsed.data_len);
+           parsed.ph.apid,
+           parsed.ph.seq_count,
+           parsed.data_len);
     printf("Payload: ");
     fwrite(pay, 1, pay_len, stdout);
     printf("\n");

@@ -18,19 +18,19 @@ void sp_set_primary_header(sp_packet_t *pkt,
 {
     if (!pkt)
         return;
-    pkt->ph.version      = 0;
-    pkt->ph.type         = (unsigned)(type & 0x1u);
+    pkt->ph.version = 0;
+    pkt->ph.type = (unsigned)(type & 0x1u);
     pkt->ph.sec_hdr_flag = (unsigned)(sec_hdr_flag ? 1u : 0u);
-    pkt->ph.apid         = (unsigned)(apid & 0x07FFu);
-    pkt->ph.seq_flags    = (sp_seq_flag_t)((unsigned)(seq_flags) & 0x3u);
-    pkt->ph.seq_count    = (unsigned)(seq_count & 0x3FFFu);
+    pkt->ph.apid = (unsigned)(apid & 0x07FFu);
+    pkt->ph.seq_flags = (sp_seq_flag_t)((unsigned)(seq_flags) & 0x3u);
+    pkt->ph.seq_count = (unsigned)(seq_count & 0x3FFFu);
 }
 
 void sp_set_data(sp_packet_t *pkt, const uint8_t *data, uint16_t data_len)
 {
     if (!pkt)
         return;
-    pkt->data     = data;
+    pkt->data = data;
     pkt->data_len = data_len;
 }
 
@@ -51,15 +51,14 @@ size_t sp_packet_serialize(const sp_packet_t *pkt, uint8_t *buf, size_t buf_len)
         return 0;
 
     /* Version bits are always 000 (CCSDS 133.0-B-2 §4.1.3.2). */
-    uint16_t first  = (uint16_t)(((pkt->ph.type         & 0x1u)    << 12) |
-                                 ((pkt->ph.sec_hdr_flag  & 0x1u)    << 11) |
-                                  (pkt->ph.apid          & 0x07FFu));
-    uint16_t second = (uint16_t)(((unsigned)(pkt->ph.seq_flags & 0x3u) << 14) |
-                                  (pkt->ph.seq_count     & 0x3FFFu));
+    uint16_t first = (uint16_t)(((pkt->ph.type & 0x1u) << 12) |
+                                ((pkt->ph.sec_hdr_flag & 0x1u) << 11) | (pkt->ph.apid & 0x07FFu));
+    uint16_t second =
+        (uint16_t)(((unsigned)(pkt->ph.seq_flags & 0x3u) << 14) | (pkt->ph.seq_count & 0x3FFFu));
     uint16_t length = (uint16_t)(pkt->data_len - 1u);
 
-    buf[0] = (uint8_t)(first  >> 8);
-    buf[1] = (uint8_t)(first  & 0xFFu);
+    buf[0] = (uint8_t)(first >> 8);
+    buf[1] = (uint8_t)(first & 0xFFu);
     buf[2] = (uint8_t)(second >> 8);
     buf[3] = (uint8_t)(second & 0xFFu);
     buf[4] = (uint8_t)(length >> 8);
@@ -77,16 +76,16 @@ int sp_packet_parse(sp_packet_t *out, const uint8_t *buf, size_t buf_len)
     if (buf_len < 6)
         return 0;
 
-    uint16_t first        = ((uint16_t)buf[0] << 8) | buf[1];
-    uint16_t second       = ((uint16_t)buf[2] << 8) | buf[3];
+    uint16_t first = ((uint16_t)buf[0] << 8) | buf[1];
+    uint16_t second = ((uint16_t)buf[2] << 8) | buf[3];
     uint16_t length_field = ((uint16_t)buf[4] << 8) | buf[5];
 
-    out->ph.version       = (unsigned)((first  >> 13) & 0x7u);
-    out->ph.type          = (unsigned)((first  >> 12) & 0x1u);
-    out->ph.sec_hdr_flag  = (unsigned)((first  >> 11) & 0x1u);
-    out->ph.apid          = (unsigned)( first         & 0x07FFu);
-    out->ph.seq_flags     = (sp_seq_flag_t)((second >> 14) & 0x3u);
-    out->ph.seq_count     = (unsigned)(second & 0x3FFFu);
+    out->ph.version = (unsigned)((first >> 13) & 0x7u);
+    out->ph.type = (unsigned)((first >> 12) & 0x1u);
+    out->ph.sec_hdr_flag = (unsigned)((first >> 11) & 0x1u);
+    out->ph.apid = (unsigned)(first & 0x07FFu);
+    out->ph.seq_flags = (sp_seq_flag_t)((second >> 14) & 0x3u);
+    out->ph.seq_count = (unsigned)(second & 0x3FFFu);
     out->ph.packet_length = length_field;
 
     uint16_t data_len = (uint16_t)(length_field + 1u);
@@ -94,7 +93,7 @@ int sp_packet_parse(sp_packet_t *out, const uint8_t *buf, size_t buf_len)
     if (buf_len < (size_t)6 + data_len)
         return 0;
 
-    out->data     = &buf[6];
+    out->data = &buf[6];
     out->data_len = data_len;
 
     return 1;

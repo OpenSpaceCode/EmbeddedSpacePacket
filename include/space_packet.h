@@ -15,9 +15,9 @@
 typedef enum
 {
     SP_SEQ_FLAG_CONTINUING_SEGMENT = 0,
-    SP_SEQ_FLAG_FIRST_SEGMENT      = 1,
-    SP_SEQ_FLAG_LAST_SEGMENT       = 2,
-    SP_SEQ_FLAG_UNSEGMENTED        = 3
+    SP_SEQ_FLAG_FIRST_SEGMENT = 1,
+    SP_SEQ_FLAG_LAST_SEGMENT = 2,
+    SP_SEQ_FLAG_UNSEGMENTED = 3
 } sp_seq_flag_t;
 
 /* Primary header — 6 bytes, big-endian on the wire (CCSDS 133.0-B-2 §4.1.3):
@@ -31,21 +31,12 @@ typedef enum
  */
 typedef struct
 {
-#if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
     unsigned version : 3;
     unsigned type : 1;
     unsigned sec_hdr_flag : 1;
     unsigned apid : 11;
     sp_seq_flag_t seq_flags : 2;
     unsigned seq_count : 14;
-#else
-    unsigned apid : 11;
-    unsigned sec_hdr_flag : 1;
-    unsigned type : 1;
-    unsigned version : 3;
-    unsigned seq_count : 14;
-    sp_seq_flag_t seq_flags : 2;
-#endif
     uint16_t packet_length;
 } sp_primary_header_t;
 
