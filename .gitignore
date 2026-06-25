@@ -54,16 +54,9 @@ dkms.conf
 # debug information files
 *.dwo
 
-# Build outputs
-examples/spacepacket_example
-tests/ctest
+# project build directories
 build/
-coverage.html
-*.gcov
-*.gcda
-*.gcno
-
-# Editor configs
+.github/
 .vscode/
 .idea/
 

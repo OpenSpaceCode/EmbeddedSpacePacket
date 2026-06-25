@@ -41,12 +41,11 @@ $(CTEST_PATH): lib tests/unit_tests.c
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -Iinclude tests/unit_tests.c $(LIB_PATH) -o $(CTEST_PATH)
 
-coverage-html:
-	bash scripts/coverage_html.sh
+test: ctest
+	./$(CTEST_PATH)
 
-ci:
-	bash scripts/coverage_html.sh
-	gcovr -r "$$PWD" --filter "$$PWD/src" --txt-summary --fail-under-line $(COVERAGE_MIN)
+coverage-html:
+	bash tools/coverage_html.sh
 
 clean:
 	rm -rf $(BUILD_DIR)
