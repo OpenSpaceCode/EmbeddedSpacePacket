@@ -9,18 +9,17 @@
 
 typedef enum
 {
-    SP_SEQ_FLAG_UNSEGMENTED = 0,
+    SP_SEQ_FLAG_CONTINUING_SEGMENT = 0,
     SP_SEQ_FLAG_FIRST_SEGMENT = 1,
-    SP_SEQ_FLAG_CONTINUING_SEGMENT = 2,
-    SP_SEQ_FLAG_LAST_SEGMENT = 3
+    SP_SEQ_FLAG_LAST_SEGMENT = 2,
+    SP_SEQ_FLAG_UNSEGMENTED = 3
 } sp_seq_flag_t;
 
 /* Primary header is 6 bytes (CCSDS-like):
  * - bytes 0-1: version(3), type(1), sec_hdr(1), apid(11)
  * - bytes 2-3: seq_flags(2), seq_count(14)
- * - bytes 4-5: packet_length (payload length - 1)
+ * - bytes 4-5: packet_length (Packet Data Field length - 1)
  */
-
 typedef struct
 {
     /* Primary header represented as bitfields (CCSDS-like) */
