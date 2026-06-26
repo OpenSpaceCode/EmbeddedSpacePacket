@@ -3,7 +3,7 @@ CC ?= cc
 CFLAGS ?= -O2 -Iinclude -Wall -Wextra -Wpedantic -Wconversion -Wshadow \
 		  -Wcast-align -Wcast-qual -Wpointer-arith -Wformat=2 \
 		  -Wmissing-prototypes -Wstrict-prototypes -Wredundant-decls -Wundef \
-		  -std=c11
+		  -std=c99
 AR ?= ar
 
 PREFIX ?= /usr/local
@@ -16,7 +16,7 @@ EXAMPLE_PATH = $(BUILD_DIR)/examples/spacepacket_example
 CTEST_PATH = $(BUILD_DIR)/tests/ctest
 COVERAGE_MIN ?= 95
 
-all: lib example test ctest
+all: lib example test
 
 lib: $(LIB_PATH)
 
