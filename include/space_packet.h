@@ -24,6 +24,12 @@ typedef enum
     SP_SEQ_FLAG_UNSEGMENTED = 3         /**< Standalone, unsegmented packet. */
 } sp_seq_flag_t;
 
+typedef enum
+{
+    SP_PACKET_TYPE_TM = 0, /**< Telemetry (TM) */
+    SP_PACKET_TYPE_TC = 1, /**< Telecommand (TC) */
+} sp_packet_type_t;
+
 /**
  * @brief Decoded CCSDS Space Packet primary header fields (CCSDS 133.0-B-2 §4.1.3).
  *
@@ -32,7 +38,7 @@ typedef enum
 typedef struct
 {
     unsigned version : 3;        /**< Packet Version Number — always 0 on transmit (§4.1.3.2). */
-    unsigned type : 1;           /**< Packet Type: 0 = TM (telemetry), 1 = TC (telecommand). */
+    sp_packet_type_t type : 1;   /**< Packet Type (see ::sp_packet_type_t). */
     unsigned sec_hdr_flag : 1;   /**< Secondary Header Flag: 1 if a secondary header is present. */
     unsigned apid : 11;          /**< Application Process Identifier (11 bits). */
     sp_seq_flag_t seq_flags : 2; /**< Sequence Flags (see ::sp_seq_flag_t). */
@@ -67,14 +73,14 @@ void sp_packet_init(sp_packet_t *pkt);
  * their valid bit widths.
  *
  * @param[out] pkt          Target packet. No-op if NULL.
- * @param[in]  type         Packet Type: 0 = TM, 1 = TC.
+ * @param[in]  type         Packet Type (see ::sp_packet_type_t).
  * @param[in]  sec_hdr_flag Secondary Header Flag (0 or 1).
  * @param[in]  apid         APID — excess bits beyond 11 are masked.
  * @param[in]  seq_flags    Sequence Flags.
  * @param[in]  seq_count    Packet Sequence Count — excess bits beyond 14 are masked.
  */
 void sp_set_primary_header(sp_packet_t *pkt,
-                           uint8_t type,
+                           sp_packet_type_t type,
                            uint8_t sec_hdr_flag,
                            uint16_t apid,
                            sp_seq_flag_t seq_flags,

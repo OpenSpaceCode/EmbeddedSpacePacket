@@ -14,7 +14,7 @@ void sp_packet_init(sp_packet_t *pkt)
 }
 
 void sp_set_primary_header(sp_packet_t *pkt,
-                           uint8_t type,
+                           sp_packet_type_t type,
                            uint8_t sec_hdr_flag,
                            uint16_t apid,
                            sp_seq_flag_t seq_flags,
@@ -23,7 +23,7 @@ void sp_set_primary_header(sp_packet_t *pkt,
     if (!pkt)
         return;
     pkt->ph.version = 0;
-    pkt->ph.type = (unsigned)(type & 0x1u);
+    pkt->ph.type = (sp_packet_type_t)((unsigned)(type) & 0x1u);
     pkt->ph.sec_hdr_flag = (unsigned)(sec_hdr_flag ? 1u : 0u);
     pkt->ph.apid = (unsigned)(apid & 0x07FFu);
     pkt->ph.seq_flags = (sp_seq_flag_t)((unsigned)(seq_flags) & 0x3u);
@@ -85,7 +85,7 @@ int sp_packet_parse(sp_packet_t *out, const uint8_t *buf, size_t buf_len)
     uint16_t length_field = ((uint16_t)buf[4] << 8) | buf[5];
 
     out->ph.version = (unsigned)((first >> 13) & 0x7u);
-    out->ph.type = (unsigned)((first >> 12) & 0x1u);
+    out->ph.type = (sp_packet_type_t)((first >> 12) & 0x1u);
     out->ph.sec_hdr_flag = (unsigned)((first >> 11) & 0x1u);
     out->ph.apid = (unsigned)(first & 0x07FFu);
     out->ph.seq_flags = (sp_seq_flag_t)((second >> 14) & 0x3u);

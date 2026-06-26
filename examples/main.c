@@ -48,7 +48,7 @@ int main(void)
     sp_packet_t pkt;
     sp_packet_init(&pkt);
     sp_set_primary_header(&pkt,
-                          0,     /* type: telemetry */
+                          SP_PACKET_TYPE_TM,
                           1,     /* secondary header present */
                           0x100, /* APID */
                           SP_SEQ_FLAG_UNSEGMENTED,

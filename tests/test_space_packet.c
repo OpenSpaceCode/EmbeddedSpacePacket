@@ -98,7 +98,7 @@ static int test_highlevel_api(void)
     sp_packet_init(&pkt);
 
     const uint8_t data[] = {'T', 'E', 'S', 'T'};
-    sp_set_primary_header(&pkt, 0, 0, 0x456, SP_SEQ_FLAG_FIRST_SEGMENT, 42);
+    sp_set_primary_header(&pkt, SP_PACKET_TYPE_TM, 0, 0x456, SP_SEQ_FLAG_FIRST_SEGMENT, 42);
     sp_set_data(&pkt, data, sizeof(data));
 
     uint8_t buf[256];
@@ -137,7 +137,7 @@ static int test_null_pointers(void)
         return 1;
 
     sp_packet_init(NULL);
-    sp_set_primary_header(NULL, 0, 0, 0, SP_SEQ_FLAG_UNSEGMENTED, 0);
+    sp_set_primary_header(NULL, SP_PACKET_TYPE_TM, 0, 0, SP_SEQ_FLAG_UNSEGMENTED, 0);
     sp_set_data(NULL, buf, 10);
 
     return 0;
@@ -155,7 +155,7 @@ static int test_sequence_flags(void)
     {
         sp_packet_t pkt;
         sp_packet_init(&pkt);
-        sp_set_primary_header(&pkt, 0, 0, 0x100, flags[i], (uint16_t)i);
+        sp_set_primary_header(&pkt, SP_PACKET_TYPE_TM, 0, 0x100, flags[i], (uint16_t)i);
         sp_set_data(&pkt, data, sizeof(data));
 
         uint8_t buf[256];
@@ -183,7 +183,7 @@ static int test_version_is_zero(void)
     sp_packet_t pkt;
     sp_packet_init(&pkt);
     const uint8_t data[] = {0x01};
-    sp_set_primary_header(&pkt, 0, 0, 0x100, SP_SEQ_FLAG_UNSEGMENTED, 0);
+    sp_set_primary_header(&pkt, SP_PACKET_TYPE_TM, 0, 0x100, SP_SEQ_FLAG_UNSEGMENTED, 0);
     sp_set_data(&pkt, data, sizeof(data));
 
     uint8_t buf[32];
@@ -209,7 +209,7 @@ static int test_type_and_fields(void)
     sp_packet_t pkt;
     sp_packet_init(&pkt);
     const uint8_t data[] = {0x99};
-    sp_set_primary_header(&pkt, 1, 0, 0x7FF, SP_SEQ_FLAG_UNSEGMENTED, 0x3FFF);
+    sp_set_primary_header(&pkt, SP_PACKET_TYPE_TC, 0, 0x7FF, SP_SEQ_FLAG_UNSEGMENTED, 0x3FFF);
     sp_set_data(&pkt, data, sizeof(data));
 
     uint8_t buf[256];
@@ -223,7 +223,7 @@ static int test_type_and_fields(void)
         return 1;
 
     ASSERT_EQ_INT(parsed.ph.version, 0);
-    ASSERT_EQ_INT(parsed.ph.type, 1);
+    ASSERT_EQ_INT(parsed.ph.type, SP_PACKET_TYPE_TC);
     ASSERT_EQ_INT(parsed.ph.apid, 0x7FF);
     ASSERT_EQ_INT(parsed.ph.seq_count, 0x3FFF);
 
@@ -236,7 +236,7 @@ static int test_buffer_too_small(void)
     sp_packet_init(&pkt);
 
     const uint8_t data[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-    sp_set_primary_header(&pkt, 0, 0, 0x100, SP_SEQ_FLAG_UNSEGMENTED, 1);
+    sp_set_primary_header(&pkt, SP_PACKET_TYPE_TM, 0, 0x100, SP_SEQ_FLAG_UNSEGMENTED, 1);
     sp_set_data(&pkt, data, sizeof(data));
 
     uint8_t buf[8]; /* too small: need 6 + 10 = 16 bytes */
@@ -248,7 +248,7 @@ static int test_empty_data(void)
 {
     sp_packet_t pkt;
     sp_packet_init(&pkt);
-    sp_set_primary_header(&pkt, 0, 0, 0x100, SP_SEQ_FLAG_UNSEGMENTED, 1);
+    sp_set_primary_header(&pkt, SP_PACKET_TYPE_TM, 0, 0x100, SP_SEQ_FLAG_UNSEGMENTED, 1);
     sp_set_data(&pkt, NULL, 0);
 
     uint8_t buf[256];
@@ -263,7 +263,7 @@ static int test_bitfield_masking(void)
     const uint8_t data[] = {0xFF};
 
     /* Pass oversized values; expect masking to valid widths. */
-    sp_set_primary_header(&pkt, 0xFF, 0, 0xFFFF, 3, 0xFFFF);
+    sp_set_primary_header(&pkt, SP_PACKET_TYPE_TC, 0, 0xFFFF, 3, 0xFFFF);
     sp_set_data(&pkt, data, sizeof(data));
 
     uint8_t buf[256];
@@ -276,10 +276,10 @@ static int test_bitfield_masking(void)
     if (!ok)
         return 1;
 
-    ASSERT_EQ_INT(parsed.ph.version, 0);        /* always 0, not masked from input */
-    ASSERT_EQ_INT(parsed.ph.type, 1);           /* 0xFF & 1 */
-    ASSERT_EQ_INT(parsed.ph.apid, 0x7FF);       /* 0xFFFF & 0x7FF */
-    ASSERT_EQ_INT(parsed.ph.seq_count, 0x3FFF); /* 0xFFFF & 0x3FFF */
+    ASSERT_EQ_INT(parsed.ph.version, 0);              /* always 0, not masked from input */
+    ASSERT_EQ_INT(parsed.ph.type, SP_PACKET_TYPE_TC); /* TC = 1 */
+    ASSERT_EQ_INT(parsed.ph.apid, 0x7FF);             /* 0xFFFF & 0x7FF */
+    ASSERT_EQ_INT(parsed.ph.seq_count, 0x3FFF);       /* 0xFFFF & 0x3FFF */
 
     return 0;
 }
