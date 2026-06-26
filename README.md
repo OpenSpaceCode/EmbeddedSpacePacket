@@ -117,11 +117,11 @@ int main(void)
     sp_packet_t pkt;
     sp_packet_init(&pkt);
     sp_set_primary_header(&pkt,
-        0,                       /* type: telemetry */
-        0,                       /* no secondary header */
-        0x100,                   /* APID */
-        SP_SEQ_FLAG_UNSEGMENTED,
-        1                        /* sequence count */);
+                          SP_PACKET_TYPE_TM,
+                          0,     /* no secondary header */
+                          0x100, /* APID */
+                          SP_SEQ_FLAG_UNSEGMENTED,
+                          1 /* sequence count */);
     sp_set_data(&pkt, data, sizeof(data));
 
     uint8_t buf[256];
@@ -138,7 +138,9 @@ if (sp_packet_parse(&parsed, buf, buf_len))
 {
     /* parsed.data points into buf — no copy made */
     printf("APID=0x%03X seq=%u data=%u bytes\n",
-           parsed.ph.apid, parsed.ph.seq_count, parsed.data_len);
+           parsed.ph.apid,
+           parsed.ph.seq_count,
+           parsed.data_len);
 }
 else
 {
@@ -157,30 +159,12 @@ sp_set_data(&pkt, pkt_data, (uint16_t)off);
 
 /* Verify after parsing: */
 size_t crc_area = parsed.data_len - 2;
-uint16_t recv   = ((uint16_t)parsed.data[crc_area] << 8) | parsed.data[crc_area + 1];
-uint16_t calc   = crc16_ccitt(parsed.data, crc_area);
-if (recv != calc) { /* integrity failure */ }
-```
-
-## API Reference
-
-### Types
-
-```c
-typedef enum {
-    SP_SEQ_FLAG_CONTINUING_SEGMENT = 0,  /* wire: 00 */
-    SP_SEQ_FLAG_FIRST_SEGMENT      = 1,  /* wire: 01 */
-    SP_SEQ_FLAG_LAST_SEGMENT       = 2,  /* wire: 10 */
-    SP_SEQ_FLAG_UNSEGMENTED        = 3   /* wire: 11 */
-} sp_seq_flag_t;
-
-typedef struct { /* primary header bitfields + packet_length */ } sp_primary_header_t;
-
-typedef struct {
-    sp_primary_header_t ph;
-    const uint8_t *data;   /* Packet Data Field (points into caller buffer) */
-    uint16_t data_len;
-} sp_packet_t;
+uint16_t recv = ((uint16_t)parsed.data[crc_area] << 8) | parsed.data[crc_area + 1];
+uint16_t calc = crc16_ccitt(parsed.data, crc_area);
+if (recv != calc)
+{ 
+    /* integrity failure */
+}
 ```
 
 ### Lifecycle

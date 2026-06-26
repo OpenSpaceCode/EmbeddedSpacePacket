@@ -16,7 +16,7 @@ EXAMPLE_PATH = $(BUILD_DIR)/examples/spacepacket_example
 CTEST_PATH = $(BUILD_DIR)/tests/ctest
 COVERAGE_MIN ?= 95
 
-all: lib example test ctest
+all: lib example test
 
 lib: $(LIB_PATH)
 

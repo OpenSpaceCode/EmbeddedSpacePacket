@@ -313,7 +313,7 @@ static int test_parse_data_far_too_short(void)
     return ok ? 1 : 0;
 }
 
-pus_test_result_t test_space_packet_run_all(void)
+test_result_t test_space_packet_run_all(void)
 {
     RUN_TEST(test_roundtrip_basic);
     RUN_TEST(test_roundtrip_with_secheader_flag);
@@ -330,7 +330,7 @@ pus_test_result_t test_space_packet_run_all(void)
     RUN_TEST(test_parse_data_truncated);
     RUN_TEST(test_parse_data_far_too_short);
 
-    pus_test_result_t r;
+    test_result_t r;
     r.total = cunit_total_tests;
     r.passed = cunit_total_tests - cunit_overall_failures;
     return r;
