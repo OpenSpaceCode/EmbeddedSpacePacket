@@ -11,6 +11,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
 /**
  * @brief Sequence Flags wire encoding (CCSDS 133.0-B-2 §4.1.3.4.2).
  *
@@ -125,5 +130,9 @@ size_t sp_packet_serialize(const sp_packet_t *pkt, uint8_t *buf, size_t buf_len)
  * @return 1 on success, 0 on failure (NULL args or buffer shorter than declared data length).
  */
 int sp_packet_parse(sp_packet_t *out, const uint8_t *buf, size_t buf_len);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* SPACE_PACKET_H */
