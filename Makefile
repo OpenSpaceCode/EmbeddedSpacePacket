@@ -50,9 +50,4 @@ coverage-html:
 clean:
 	rm -rf $(BUILD_DIR)
 
-install: lib
-	mkdir -p $(PREFIX)/lib $(PREFIX)/include
-	cp $(LIB_PATH) $(PREFIX)/lib/$(LIBNAME)
-	cp include/space_packet.h $(PREFIX)/include/
-
 .PHONY: all lib example test ctest coverage-html ci clean install
