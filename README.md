@@ -105,7 +105,44 @@ make clean
 
 ## Quick Start
 
-Look at the example/.
+Minimal encode / decode round trip, condensed from [examples/main.c](examples/main.c):
+
+```c
+#include "space_packet.h"
+
+const uint8_t payload[] = {'H', 'e', 'l', 'l', 'o', ' ', 'S', 'P'};
+
+/* Encode */
+sp_packet_t pkt;
+sp_packet_init(&pkt);
+sp_set_primary_header(&pkt,
+                      SP_PACKET_TYPE_TM,
+                      0,     /* no secondary header */
+                      0x100, /* APID */
+                      SP_SEQ_FLAG_UNSEGMENTED,
+                      1 /* sequence count */);
+sp_set_data(&pkt, payload, sizeof(payload));
+
+uint8_t buf[256];
+size_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
+if (n == 0)
+{
+    /* NULL args, empty data, or buffer too small */
+}
+
+/* Decode */
+sp_packet_t parsed;
+if (!sp_packet_parse(&parsed, buf, n))
+{
+    /* buffer shorter than declared data length */
+}
+/* parsed.ph.apid, parsed.ph.seq_count, parsed.data, parsed.data_len
+ * parsed.data points into buf (zero-copy) — keep buf alive. */
+```
+
+The full example in [examples/main.c](examples/main.c) additionally shows a
+mission-defined secondary header and an application-level CRC-16-CCITT
+(`make example`).
 
 ## Memory Footprint (estimated, 64-bit host)
 
