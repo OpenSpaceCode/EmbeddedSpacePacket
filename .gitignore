@@ -56,7 +56,6 @@ dkms.conf
 
 # project build directories
 build/
-.github/
 .vscode/
 .idea/
 

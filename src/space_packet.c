@@ -2,14 +2,16 @@
  * @file space_packet.c
  * @brief CCSDS Space Packet Protocol — serialiser, parser and header helpers.
  */
-#include "../include/space_packet.h"
+#include "space_packet.h"
 
 #include <string.h>
 
 void sp_packet_init(sp_packet_t *pkt)
 {
     if (!pkt)
+    {
         return;
+    }
     memset(pkt, 0, sizeof(*pkt));
 }
 
@@ -21,45 +23,59 @@ void sp_set_primary_header(sp_packet_t *pkt,
                            uint16_t seq_count)
 {
     if (!pkt)
+    {
         return;
-    pkt->ph.version = 0;
-    pkt->ph.type = (sp_packet_type_t)((unsigned)(type) & 0x1u);
+    }
+    pkt->ph.version = SP_PACKET_VERSION;
+    pkt->ph.type = (unsigned)(type) & 0x1u;
     pkt->ph.sec_hdr_flag = (unsigned)(sec_hdr_flag ? 1u : 0u);
     pkt->ph.apid = (unsigned)(apid & 0x07FFu);
-    pkt->ph.seq_flags = (sp_seq_flag_t)((unsigned)(seq_flags) & 0x3u);
+    pkt->ph.seq_flags = (unsigned)(seq_flags) & 0x3u;
     pkt->ph.seq_count = (unsigned)(seq_count & 0x3FFFu);
 }
 
-void sp_set_data(sp_packet_t *pkt, const uint8_t *data, uint16_t data_len)
+void sp_set_data(sp_packet_t *pkt, const uint8_t *data, uint32_t data_len)
 {
     if (!pkt)
+    {
         return;
+    }
     pkt->data = data;
     pkt->data_len = data_len;
 }
 
-size_t sp_packet_serialize_size(const sp_packet_t *pkt)
+uint32_t sp_packet_serialize_size(const sp_packet_t *pkt)
 {
-    if (!pkt || pkt->data_len == 0)
+    if ((!pkt) || (pkt->data_len == 0) || (pkt->data_len > SP_PDF_MAX_LEN))
+    {
         return 0;
-    return (size_t)6 + pkt->data_len;
+    }
+    return (uint32_t)SP_PRIMARY_HEADER_LEN + pkt->data_len;
 }
 
-size_t sp_packet_serialize(const sp_packet_t *pkt, uint8_t *buf, size_t buf_len)
+uint32_t sp_packet_serialize(const sp_packet_t *pkt, uint8_t *buf, uint32_t buf_len)
 {
-    if (!pkt || !buf || !pkt->data || pkt->data_len == 0)
+    if ((!pkt) || (!buf) || (!pkt->data))
+    {
         return 0;
+    }
+    if ((pkt->data_len == 0) || (pkt->data_len > SP_PDF_MAX_LEN))
+    {
+        return 0;
+    }
 
-    const size_t need = (size_t)6 + pkt->data_len;
+    const uint32_t need = (uint32_t)SP_PRIMARY_HEADER_LEN + pkt->data_len;
     if (buf_len < need)
+    {
         return 0;
+    }
 
     /* Version bits are always 000 (CCSDS 133.0-B-2 §4.1.3.2). */
     const uint16_t first =
         (uint16_t)(((pkt->ph.type & 0x1u) << 12) | ((pkt->ph.sec_hdr_flag & 0x1u) << 11) |
                    (pkt->ph.apid & 0x07FFu));
     const uint16_t second =
-        (uint16_t)(((unsigned)(pkt->ph.seq_flags & 0x3u) << 14) | (pkt->ph.seq_count & 0x3FFFu));
+        (uint16_t)(((pkt->ph.seq_flags & 0x3u) << 14) | (pkt->ph.seq_count & 0x3FFFu));
     const uint16_t length = (uint16_t)(pkt->data_len - 1u);
 
     buf[0] = (uint8_t)(first >> 8);
@@ -69,36 +85,49 @@ size_t sp_packet_serialize(const sp_packet_t *pkt, uint8_t *buf, size_t buf_len)
     buf[4] = (uint8_t)(length >> 8);
     buf[5] = (uint8_t)(length & 0xFFu);
 
-    memcpy(&buf[6], pkt->data, pkt->data_len);
+    memcpy(&buf[SP_PRIMARY_HEADER_LEN], pkt->data, pkt->data_len);
 
     return need;
 }
 
-int sp_packet_parse(sp_packet_t *out, const uint8_t *buf, size_t buf_len)
+int sp_packet_parse(sp_packet_t *out, const uint8_t *buf, uint32_t buf_len)
 {
     if (!out || !buf)
+    {
         return 0;
-    if (buf_len < 6)
+    }
+    if (buf_len < SP_PRIMARY_HEADER_LEN)
+    {
         return 0;
+    }
 
-    const uint16_t first = ((uint16_t)buf[0] << 8) | buf[1];
-    const uint16_t second = ((uint16_t)buf[2] << 8) | buf[3];
-    const uint16_t length_field = ((uint16_t)buf[4] << 8) | buf[5];
+    const uint16_t first = (uint16_t)(((unsigned)buf[0] << 8) | buf[1]);
+    const uint16_t second = (uint16_t)(((unsigned)buf[2] << 8) | buf[3]);
+    const uint16_t length_field = (uint16_t)(((unsigned)buf[4] << 8) | buf[5]);
 
-    out->ph.version = (unsigned)((first >> 13) & 0x7u);
-    out->ph.type = (sp_packet_type_t)((first >> 12) & 0x1u);
+    /* Only version 000 identifies a Space Packet (CCSDS 133.0-B-2 §4.1.3.2). */
+    if (((first >> 13) & 0x7u) != SP_PACKET_VERSION)
+    {
+        return 0;
+    }
+
+    /* 32-bit: a length count of 0xFFFF denotes 65536 octets (CCSDS 133.0-B-2 §4.1.3.5.3). */
+    const uint32_t data_len = (uint32_t)length_field + 1u;
+
+    if (buf_len < ((uint32_t)SP_PRIMARY_HEADER_LEN + data_len))
+    {
+        return 0;
+    }
+
+    /* All checks passed: out is written only from here on, so a failed parse leaves it intact. */
+    out->ph.version = SP_PACKET_VERSION;
+    out->ph.type = (unsigned)((first >> 12) & 0x1u);
     out->ph.sec_hdr_flag = (unsigned)((first >> 11) & 0x1u);
     out->ph.apid = (unsigned)(first & 0x07FFu);
-    out->ph.seq_flags = (sp_seq_flag_t)((second >> 14) & 0x3u);
+    out->ph.seq_flags = (unsigned)((second >> 14) & 0x3u);
     out->ph.seq_count = (unsigned)(second & 0x3FFFu);
     out->ph.packet_length = length_field;
-
-    const uint16_t data_len = (uint16_t)(length_field + 1u);
-
-    if (buf_len < (size_t)6 + data_len)
-        return 0;
-
-    out->data = &buf[6];
+    out->data = &buf[SP_PRIMARY_HEADER_LEN];
     out->data_len = data_len;
 
     return 1;

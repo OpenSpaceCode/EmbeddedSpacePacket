@@ -1,4 +1,4 @@
-#include "../include/space_packet.h"
+#include "space_packet.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -16,7 +16,9 @@ static uint16_t crc16_ccitt(const uint8_t *data, size_t len)
     {
         crc ^= (uint16_t)((uint16_t)data[i] << 8);
         for (int k = 0; k < 8; ++k)
-            crc = (crc & 0x8000u) ? (uint16_t)((crc << 1) ^ 0x1021u) : (uint16_t)(crc << 1);
+        {
+            crc = (uint16_t)(((unsigned)crc << 1) ^ ((crc & 0x8000u) ? 0x1021u : 0u));
+        }
     }
     return crc;
 }
@@ -53,19 +55,21 @@ int main(void)
                           0x100, /* APID */
                           SP_SEQ_FLAG_UNSEGMENTED,
                           1 /* sequence count */);
-    sp_set_data(&pkt, pkt_data, (uint16_t)off);
+    sp_set_data(&pkt, pkt_data, (uint32_t)off);
 
     uint8_t buf[256];
-    size_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
+    uint32_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
     if (n == 0)
     {
         printf("serialize failed\n");
         return 1;
     }
 
-    printf("Serialized %zu bytes:\n", n);
+    printf("Serialized %lu bytes:\n", (unsigned long)n);
     for (size_t i = 0; i < n; ++i)
+    {
         printf("%02X ", buf[i]);
+    }
     printf("\n");
 
     sp_packet_t parsed;
@@ -82,7 +86,8 @@ int main(void)
         return 3;
     }
     size_t crc_area = parsed.data_len - 2;
-    uint16_t crc_recv = ((uint16_t)parsed.data[crc_area] << 8) | parsed.data[crc_area + 1];
+    uint16_t crc_recv =
+        (uint16_t)(((unsigned)parsed.data[crc_area] << 8) | parsed.data[crc_area + 1]);
     uint16_t crc_calc = crc16_ccitt(parsed.data, crc_area);
     if (crc_recv != crc_calc)
     {
@@ -95,10 +100,10 @@ int main(void)
     const uint8_t *pay = parsed.data + sec_total;
     size_t pay_len = crc_area - sec_total;
 
-    printf("APID=0x%03X seq_count=%u data_len=%u CRC OK\n",
+    printf("APID=0x%03X seq_count=%u data_len=%lu CRC OK\n",
            parsed.ph.apid,
            parsed.ph.seq_count,
-           parsed.data_len);
+           (unsigned long)parsed.data_len);
     printf("Payload: ");
     fwrite(pay, 1, pay_len, stdout);
     printf("\n");

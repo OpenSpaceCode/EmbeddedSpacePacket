@@ -16,6 +16,20 @@ extern "C"
 {
 #endif
 
+/** @brief Primary Header length in bytes (CCSDS 133.0-B-2 §4.1.3.1). */
+#define SP_PRIMARY_HEADER_LEN 6U
+
+/**
+ * @brief Maximum Packet Data Field length in bytes (CCSDS 133.0-B-2 §4.1.3.5.3).
+ *
+ * The 16-bit length count is C = (Total Number of Octets in the Packet Data Field) – 1,
+ * so C = 0xFFFF denotes 65536 octets.
+ */
+#define SP_PDF_MAX_LEN 65536UL
+
+/** @brief Packet Version Number of a Space Packet (CCSDS 133.0-B-2 §4.1.3.2). */
+#define SP_PACKET_VERSION 0U
+
 /**
  * @brief Sequence Flags wire encoding (CCSDS 133.0-B-2 §4.1.3.4.2).
  *
@@ -39,16 +53,18 @@ typedef enum
  * @brief Decoded CCSDS Space Packet primary header fields (CCSDS 133.0-B-2 §4.1.3).
  *
  * @note Do not serialise this struct directly; use sp_packet_serialize().
+ * @note Bit-fields are plain @c unsigned: enum-typed bit-fields are implementation-defined in C99.
+ *       @p type and @p seq_flags hold ::sp_packet_type_t and ::sp_seq_flag_t values.
  */
 typedef struct
 {
-    unsigned version : 3;        /**< Packet Version Number — always 0 on transmit (§4.1.3.2). */
-    sp_packet_type_t type : 1;   /**< Packet Type (see ::sp_packet_type_t). */
-    unsigned sec_hdr_flag : 1;   /**< Secondary Header Flag: 1 if a secondary header is present. */
-    unsigned apid : 11;          /**< Application Process Identifier (11 bits). */
-    sp_seq_flag_t seq_flags : 2; /**< Sequence Flags (see ::sp_seq_flag_t). */
-    unsigned seq_count : 14;     /**< Packet Sequence Count, modulo-16384 per APID (§4.1.3.4.3). */
-    uint16_t packet_length;      /**< Raw Packet Data Length field: (data octets) − 1 (§4.1.3.5). */
+    unsigned version : 3;      /**< Packet Version Number — always 0 (§4.1.3.2). */
+    unsigned type : 1;         /**< Packet Type (see ::sp_packet_type_t). */
+    unsigned sec_hdr_flag : 1; /**< Secondary Header Flag: 1 if a secondary header is present. */
+    unsigned apid : 11;        /**< Application Process Identifier (11 bits). */
+    unsigned seq_flags : 2;    /**< Sequence Flags (see ::sp_seq_flag_t). */
+    unsigned seq_count : 14;   /**< Packet Sequence Count, modulo-16384 per APID (§4.1.3.4.3). */
+    uint16_t packet_length;    /**< Raw Packet Data Length field: (data octets) − 1 (§4.1.3.5). */
 } sp_primary_header_t;
 
 /**
@@ -61,7 +77,7 @@ typedef struct
     sp_primary_header_t ph; /**< Decoded primary header fields. */
     const uint8_t
         *data; /**< Packet Data Field — mission-defined layout (secondary header + user data). */
-    uint16_t data_len; /**< Packet Data Field length in bytes. */
+    uint32_t data_len; /**< Packet Data Field length in bytes (1 to ::SP_PDF_MAX_LEN). */
 } sp_packet_t;
 
 /**
@@ -96,17 +112,18 @@ void sp_set_primary_header(sp_packet_t *pkt,
  *
  * @param[out] pkt      Target packet. No-op if NULL.
  * @param[in]  data     Packet Data Field (not copied; caller keeps memory alive).
- * @param[in]  data_len Length of @p data in bytes.
+ * @param[in]  data_len Length of @p data in bytes (1 to ::SP_PDF_MAX_LEN).
  */
-void sp_set_data(sp_packet_t *pkt, const uint8_t *data, uint16_t data_len);
+void sp_set_data(sp_packet_t *pkt, const uint8_t *data, uint32_t data_len);
 
 /**
  * @brief Return the serialised size of a packet.
  *
  * @param[in] pkt Packet to measure.
- * @return 6 + data_len, or 0 if @p pkt is NULL or data_len is 0.
+ * @return ::SP_PRIMARY_HEADER_LEN + data_len, or 0 if @p pkt is NULL or data_len is outside
+ *         1 to ::SP_PDF_MAX_LEN.
  */
-size_t sp_packet_serialize_size(const sp_packet_t *pkt);
+uint32_t sp_packet_serialize_size(const sp_packet_t *pkt);
 
 /**
  * @brief Serialise a Space Packet into a caller-supplied buffer.
@@ -114,22 +131,24 @@ size_t sp_packet_serialize_size(const sp_packet_t *pkt);
  * @param[in]  pkt     Packet to serialise.
  * @param[out] buf     Output buffer.
  * @param[in]  buf_len Buffer capacity in bytes.
- * @return Bytes written, or 0 on error (NULL args, empty data, or buffer too small).
+ * @return Bytes written, or 0 on error (NULL args, data length outside 1 to ::SP_PDF_MAX_LEN,
+ *         or buffer too small).
  */
-size_t sp_packet_serialize(const sp_packet_t *pkt, uint8_t *buf, size_t buf_len);
+uint32_t sp_packet_serialize(const sp_packet_t *pkt, uint8_t *buf, uint32_t buf_len);
 
 /**
  * @brief Parse a wire-format Space Packet.
  *
  * On success, @p out->data points into @p buf (zero-copy). Keep @p buf alive
- * as long as the parsed packet is in use.
+ * as long as the parsed packet is in use. On failure, @p out is left unchanged.
  *
  * @param[out] out     Decoded packet.
  * @param[in]  buf     Wire buffer to parse.
  * @param[in]  buf_len Buffer length in bytes.
- * @return 1 on success, 0 on failure (NULL args or buffer shorter than declared data length).
+ * @return 1 on success, 0 on failure (NULL args, non-zero Packet Version Number, or buffer
+ *         shorter than declared data length).
  */
-int sp_packet_parse(sp_packet_t *out, const uint8_t *buf, size_t buf_len);
+int sp_packet_parse(sp_packet_t *out, const uint8_t *buf, uint32_t buf_len);
 
 #ifdef __cplusplus
 }

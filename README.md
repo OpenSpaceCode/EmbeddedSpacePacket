@@ -19,7 +19,7 @@ the source end user").
 
 - **Primary Header serializer / parser** — big-endian, bit-exact per CCSDS §4.1.3
 - **Sequence Flags** — wire values match the standard (`UNSEGMENTED = 0b11 = 3`)
-- **Version enforcement** — always serializes Packet Version Number as `000` (§4.1.3.2)
+- **Version enforcement** — always serializes Packet Version Number as `000` and rejects any other value on parse (§4.1.3.2)
 - **Zero allocation** — no dynamic memory inside the library; caller supplies all buffers
 - **Minimal footprint** — single header + single source file, no external dependencies
 - **Pure C99** — no OS primitives, suitable for bare-metal targets
@@ -62,6 +62,9 @@ appended to the Packet Data Field before calling `sp_packet_serialize`. See
 
 ```
 EmbeddedSpacePacket/
+├── .github/
+│   └── workflows/
+│       └── ci.yml           # CI: unit tests, coverage gate, sanitizers
 ├── include/
 │   └── space_packet.h       # Public API and types
 ├── src/
@@ -76,7 +79,6 @@ EmbeddedSpacePacket/
 ├── tools/
 │   └── coverage_html.sh     # gcovr HTML coverage report
 ├── build/                   # Build artifacts (git-ignored)
-├── docs/                    # CCSDS reference PDFs
 ├── Makefile
 └── README.md
 ```
@@ -90,11 +92,20 @@ make example  # example binary       → build/examples/spacepacket_example
 make test     # build and run tests
 ```
 
+Warnings are treated as errors (`-Werror`). The build is checked with both `gcc` and
+`clang`; select the compiler with `make CC=clang`.
+
 ### Coverage (requires `gcovr`)
 
 ```bash
 sudo apt install gcovr
 make coverage-html   # → build/coverage/index.html
+```
+
+### Sanitizers (ASan + UBSan)
+
+```bash
+make sanitize        # rebuild with ASan + UBSan, run tests and example, then clean up
 ```
 
 ### Clean
@@ -103,15 +114,63 @@ make coverage-html   # → build/coverage/index.html
 make clean
 ```
 
+### Continuous Integration
+
+Every push to `main` and every pull request runs three jobs
+([.github/workflows/ci.yml](.github/workflows/ci.yml)):
+
+| Job          | What it checks                                                      |
+| ------------ | ------------------------------------------------------------------- |
+| Unit tests   | `make` with `gcc` and with `clang`, then the example binary         |
+| Coverage     | `make coverage-html`, then requires 100% line and branch coverage   |
+| ASan + UBSan | `make sanitize`                                                     |
+
 ## Quick Start
 
-Look at the example/.
+Minimal encode / decode round trip, condensed from [examples/main.c](examples/main.c):
+
+```c
+#include "space_packet.h"
+
+const uint8_t payload[] = {'H', 'e', 'l', 'l', 'o', ' ', 'S', 'P'};
+
+/* Encode */
+sp_packet_t pkt;
+sp_packet_init(&pkt);
+sp_set_primary_header(&pkt,
+                      SP_PACKET_TYPE_TM,
+                      0,     /* no secondary header */
+                      0x100, /* APID */
+                      SP_SEQ_FLAG_UNSEGMENTED,
+                      1 /* sequence count */);
+sp_set_data(&pkt, payload, sizeof(payload));
+
+uint8_t buf[256];
+uint32_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
+if (n == 0)
+{
+    /* NULL args, empty data, or buffer too small */
+}
+
+/* Decode */
+sp_packet_t parsed;
+if (!sp_packet_parse(&parsed, buf, n))
+{
+    /* non-zero version, or buffer shorter than declared data length */
+}
+/* parsed.ph.apid, parsed.ph.seq_count, parsed.data, parsed.data_len
+ * parsed.data points into buf (zero-copy) — keep buf alive. */
+```
+
+The full example in [examples/main.c](examples/main.c) additionally shows a
+mission-defined secondary header and an application-level CRC-16-CCITT
+(`make example`).
 
 ## Memory Footprint (estimated, 64-bit host)
 
 | Item                    | Size                 |
 | ----------------------- | -------------------- |
-| `sp_packet_t` struct    | ~28 bytes            |
+| `sp_packet_t` struct    | 24 bytes             |
 | Library code (stripped) | < 1 KB               |
 | Serialization buffer    | 6 + `data_len` bytes |
 | Heap usage              | none                 |
