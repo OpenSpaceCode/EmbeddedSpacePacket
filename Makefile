@@ -1,6 +1,8 @@
 CC ?= cc
 # Optimisation / instrumentation flags; overridden by tools/coverage_html.sh
 OPT ?= -O2
+SANITIZE_OPT = -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined \
+			   -fno-sanitize-recover=all
 # Stronger warnings for code quality
 CFLAGS ?= $(OPT) -Iinclude -Wall -Wextra -Wpedantic -Wconversion -Wshadow \
 		  -Wcast-align -Wcast-qual -Wpointer-arith -Wformat=2 \
@@ -14,6 +16,7 @@ LIB_PATH = $(BUILD_DIR)/$(LIBNAME)
 OBJ_PATH = $(BUILD_DIR)/src/space_packet.o
 EXAMPLE_PATH = $(BUILD_DIR)/examples/spacepacket_example
 CTEST_PATH = $(BUILD_DIR)/tests/ctest
+SANITIZE_DIR = $(BUILD_DIR)/sanitize
 
 PUBLIC_HEADERS = include/space_packet.h
 TEST_SOURCES = tests/unit_tests.c tests/test_space_packet.c
@@ -49,7 +52,26 @@ test: ctest
 coverage-html:
 	bash tools/coverage_html.sh
 
+# Rebuild everything with ASan + UBSan and run the unit tests and the example.
+# Program output is shown only on failure; sanitizer reports go to stderr and are always
+# visible. The instrumented build is removed afterwards, on success and on failure.
+sanitize:
+	@$(MAKE) --no-print-directory clean >/dev/null
+	@$(MAKE) --no-print-directory lib example ctest OPT="$(SANITIZE_OPT)" >/dev/null
+	@mkdir -p $(SANITIZE_DIR)
+	@echo "Sanitizers (ASan + UBSan):"
+	@./$(CTEST_PATH) >$(SANITIZE_DIR)/unit_tests.log \
+		&& echo "  library via unit tests : no errors detected" \
+		|| { cat $(SANITIZE_DIR)/unit_tests.log; echo "  library via unit tests : FAILED"; \
+		     $(MAKE) --no-print-directory clean >/dev/null; exit 1; }
+	@./$(EXAMPLE_PATH) >$(SANITIZE_DIR)/example.log \
+		&& echo "  library via example    : no errors detected" \
+		|| { cat $(SANITIZE_DIR)/example.log; echo "  library via example    : FAILED"; \
+		     $(MAKE) --no-print-directory clean >/dev/null; exit 1; }
+	@$(MAKE) --no-print-directory clean >/dev/null
+	@echo "Result: PASS"
+
 clean:
 	rm -rf $(BUILD_DIR)
 
-.PHONY: all lib example test ctest coverage-html clean
+.PHONY: all lib example test ctest coverage-html sanitize clean

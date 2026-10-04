@@ -97,6 +97,12 @@ sudo apt install gcovr
 make coverage-html   # → build/coverage/index.html
 ```
 
+### Sanitizers (ASan + UBSan)
+
+```bash
+make sanitize        # rebuild with ASan + UBSan, run tests and example, then clean up
+```
+
 ### Clean
 
 ```bash
