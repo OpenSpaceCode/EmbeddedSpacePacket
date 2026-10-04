@@ -62,6 +62,9 @@ appended to the Packet Data Field before calling `sp_packet_serialize`. See
 
 ```
 EmbeddedSpacePacket/
+├── .github/
+│   └── workflows/
+│       └── ci.yml           # CI: unit tests, coverage gate, sanitizers
 ├── include/
 │   └── space_packet.h       # Public API and types
 ├── src/
@@ -76,7 +79,6 @@ EmbeddedSpacePacket/
 ├── tools/
 │   └── coverage_html.sh     # gcovr HTML coverage report
 ├── build/                   # Build artifacts (git-ignored)
-├── docs/                    # CCSDS reference PDFs
 ├── Makefile
 └── README.md
 ```
@@ -89,6 +91,9 @@ make lib      # static library only  → build/libspacepacket.a
 make example  # example binary       → build/examples/spacepacket_example
 make test     # build and run tests
 ```
+
+Warnings are treated as errors (`-Werror`). The build is checked with both `gcc` and
+`clang`; select the compiler with `make CC=clang`.
 
 ### Coverage (requires `gcovr`)
 
@@ -108,6 +113,17 @@ make sanitize        # rebuild with ASan + UBSan, run tests and example, then cl
 ```bash
 make clean
 ```
+
+### Continuous Integration
+
+Every push to `main` and every pull request runs three jobs
+([.github/workflows/ci.yml](.github/workflows/ci.yml)):
+
+| Job          | What it checks                                                      |
+| ------------ | ------------------------------------------------------------------- |
+| Unit tests   | `make` with `gcc` and with `clang`, then the example binary         |
+| Coverage     | `make coverage-html`, then requires 100% line and branch coverage   |
+| ASan + UBSan | `make sanitize`                                                     |
 
 ## Quick Start
 
@@ -140,7 +156,7 @@ if (n == 0)
 sp_packet_t parsed;
 if (!sp_packet_parse(&parsed, buf, n))
 {
-    /* buffer shorter than declared data length */
+    /* non-zero version, or buffer shorter than declared data length */
 }
 /* parsed.ph.apid, parsed.ph.seq_count, parsed.data, parsed.data_len
  * parsed.data points into buf (zero-copy) — keep buf alive. */
@@ -154,7 +170,7 @@ mission-defined secondary header and an application-level CRC-16-CCITT
 
 | Item                    | Size                 |
 | ----------------------- | -------------------- |
-| `sp_packet_t` struct    | ~28 bytes            |
+| `sp_packet_t` struct    | 24 bytes             |
 | Library code (stripped) | < 1 KB               |
 | Serialization buffer    | 6 + `data_len` bytes |
 | Heap usage              | none                 |
