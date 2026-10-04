@@ -58,14 +58,14 @@ int main(void)
     sp_set_data(&pkt, pkt_data, (uint32_t)off);
 
     uint8_t buf[256];
-    size_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
+    uint32_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
     if (n == 0)
     {
         printf("serialize failed\n");
         return 1;
     }
 
-    printf("Serialized %zu bytes:\n", n);
+    printf("Serialized %lu bytes:\n", (unsigned long)n);
     for (size_t i = 0; i < n; ++i)
     {
         printf("%02X ", buf[i]);

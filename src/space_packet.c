@@ -44,16 +44,16 @@ void sp_set_data(sp_packet_t *pkt, const uint8_t *data, uint32_t data_len)
     pkt->data_len = data_len;
 }
 
-size_t sp_packet_serialize_size(const sp_packet_t *pkt)
+uint32_t sp_packet_serialize_size(const sp_packet_t *pkt)
 {
     if ((!pkt) || (pkt->data_len == 0) || (pkt->data_len > SP_PDF_MAX_LEN))
     {
         return 0;
     }
-    return (size_t)SP_PRIMARY_HEADER_LEN + pkt->data_len;
+    return (uint32_t)SP_PRIMARY_HEADER_LEN + pkt->data_len;
 }
 
-size_t sp_packet_serialize(const sp_packet_t *pkt, uint8_t *buf, size_t buf_len)
+uint32_t sp_packet_serialize(const sp_packet_t *pkt, uint8_t *buf, uint32_t buf_len)
 {
     if ((!pkt) || (!buf) || (!pkt->data))
     {
@@ -64,7 +64,6 @@ size_t sp_packet_serialize(const sp_packet_t *pkt, uint8_t *buf, size_t buf_len)
         return 0;
     }
 
-    /* 32-bit arithmetic: the largest packet (6 + 65536 octets) does not fit in 16 bits. */
     const uint32_t need = (uint32_t)SP_PRIMARY_HEADER_LEN + pkt->data_len;
     if (buf_len < need)
     {
@@ -88,10 +87,10 @@ size_t sp_packet_serialize(const sp_packet_t *pkt, uint8_t *buf, size_t buf_len)
 
     memcpy(&buf[SP_PRIMARY_HEADER_LEN], pkt->data, pkt->data_len);
 
-    return (size_t)need;
+    return need;
 }
 
-int sp_packet_parse(sp_packet_t *out, const uint8_t *buf, size_t buf_len)
+int sp_packet_parse(sp_packet_t *out, const uint8_t *buf, uint32_t buf_len)
 {
     if (!out || !buf)
     {

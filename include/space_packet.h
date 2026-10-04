@@ -123,7 +123,7 @@ void sp_set_data(sp_packet_t *pkt, const uint8_t *data, uint32_t data_len);
  * @return ::SP_PRIMARY_HEADER_LEN + data_len, or 0 if @p pkt is NULL or data_len is outside
  *         1 to ::SP_PDF_MAX_LEN.
  */
-size_t sp_packet_serialize_size(const sp_packet_t *pkt);
+uint32_t sp_packet_serialize_size(const sp_packet_t *pkt);
 
 /**
  * @brief Serialise a Space Packet into a caller-supplied buffer.
@@ -134,7 +134,7 @@ size_t sp_packet_serialize_size(const sp_packet_t *pkt);
  * @return Bytes written, or 0 on error (NULL args, data length outside 1 to ::SP_PDF_MAX_LEN,
  *         or buffer too small).
  */
-size_t sp_packet_serialize(const sp_packet_t *pkt, uint8_t *buf, size_t buf_len);
+uint32_t sp_packet_serialize(const sp_packet_t *pkt, uint8_t *buf, uint32_t buf_len);
 
 /**
  * @brief Parse a wire-format Space Packet.
@@ -148,7 +148,7 @@ size_t sp_packet_serialize(const sp_packet_t *pkt, uint8_t *buf, size_t buf_len)
  * @return 1 on success, 0 on failure (NULL args, non-zero Packet Version Number, or buffer
  *         shorter than declared data length).
  */
-int sp_packet_parse(sp_packet_t *out, const uint8_t *buf, size_t buf_len);
+int sp_packet_parse(sp_packet_t *out, const uint8_t *buf, uint32_t buf_len);
 
 #ifdef __cplusplus
 }

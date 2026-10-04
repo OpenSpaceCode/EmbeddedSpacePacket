@@ -13,13 +13,13 @@ static int test_roundtrip_basic(void)
     pkt.ph.seq_count = 0x2;
     sp_set_data(&pkt, data, sizeof(data));
 
-    size_t buf_len = sp_packet_serialize_size(&pkt);
+    uint32_t buf_len = sp_packet_serialize_size(&pkt);
     uint8_t *buf = (uint8_t *)malloc(buf_len);
     if (!buf)
     {
         return 1;
     }
-    size_t n = sp_packet_serialize(&pkt, buf, buf_len);
+    uint32_t n = sp_packet_serialize(&pkt, buf, buf_len);
     if (n == 0)
     {
         free(buf);
@@ -57,13 +57,13 @@ static int test_roundtrip_with_secheader_flag(void)
     pkt.ph.seq_count = 0x3;
     sp_set_data(&pkt, data, sizeof(data));
 
-    size_t buf_len = sp_packet_serialize_size(&pkt);
+    uint32_t buf_len = sp_packet_serialize_size(&pkt);
     uint8_t *buf = (uint8_t *)malloc(buf_len);
     if (!buf)
     {
         return 1;
     }
-    size_t n = sp_packet_serialize(&pkt, buf, buf_len);
+    uint32_t n = sp_packet_serialize(&pkt, buf, buf_len);
     if (n == 0)
     {
         free(buf);
@@ -106,7 +106,7 @@ static int test_highlevel_api(void)
     sp_set_data(&pkt, data, sizeof(data));
 
     uint8_t buf[256];
-    size_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
+    uint32_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
     if (n == 0)
     {
         return 1;
@@ -177,7 +177,7 @@ static int test_sequence_flags(void)
         sp_set_data(&pkt, data, sizeof(data));
 
         uint8_t buf[256];
-        size_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
+        uint32_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
         if (n == 0)
         {
             return 1;
@@ -211,7 +211,7 @@ static int test_version_is_zero(void)
     sp_set_data(&pkt, data, sizeof(data));
 
     uint8_t buf[32];
-    size_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
+    uint32_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
     if (n == 0)
     {
         return 1;
@@ -241,7 +241,7 @@ static int test_type_and_fields(void)
     sp_set_data(&pkt, data, sizeof(data));
 
     uint8_t buf[256];
-    size_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
+    uint32_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
     if (n == 0)
     {
         return 1;
@@ -272,7 +272,7 @@ static int test_buffer_too_small(void)
     sp_set_data(&pkt, data, sizeof(data));
 
     uint8_t buf[8]; /* too small: need 6 + 10 = 16 bytes */
-    size_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
+    uint32_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
     return (n == 0) ? 0 : 1;
 }
 
@@ -284,7 +284,7 @@ static int test_empty_data(void)
     sp_set_data(&pkt, NULL, 0);
 
     uint8_t buf[256];
-    size_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
+    uint32_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
     return (n == 0) ? 0 : 1; /* serializer must reject empty Packet Data Field */
 }
 
@@ -311,7 +311,7 @@ static int test_secondary_header_flag_on_wire(void)
     sp_set_data(&pkt, data, sizeof(data));
 
     uint8_t buf[32];
-    size_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
+    uint32_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
     ASSERT_TRUE(n != 0);
 
     /* Secondary Header Flag is bit 4 of the header, i.e. bit 3 of byte 0. */
@@ -334,7 +334,7 @@ static int test_bitfield_masking(void)
     sp_set_data(&pkt, data, sizeof(data));
 
     uint8_t buf[256];
-    size_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
+    uint32_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
     if (n == 0)
     {
         return 1;
@@ -449,7 +449,7 @@ static int test_roundtrip_max_length(void)
     sp_set_primary_header(&pkt, SP_PACKET_TYPE_TM, 0, 0x100, SP_SEQ_FLAG_UNSEGMENTED, 1);
     sp_set_data(&pkt, data, SP_PDF_MAX_LEN);
 
-    size_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
+    uint32_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
     ASSERT_TRUE(n == sizeof(buf));
 
     sp_packet_t parsed;
@@ -497,7 +497,7 @@ static int test_parse_failure_leaves_out_untouched(void)
 static int test_serialize_buffer_size_boundary(void)
 {
     const uint8_t data[] = {1, 2, 3, 4};
-    const size_t need = SP_PRIMARY_HEADER_LEN + sizeof(data);
+    const uint32_t need = SP_PRIMARY_HEADER_LEN + sizeof(data);
 
     sp_packet_t pkt;
     sp_packet_init(&pkt);
@@ -544,7 +544,7 @@ static int test_roundtrip_min_length(void)
     sp_set_data(&pkt, data, sizeof(data));
 
     uint8_t buf[SP_PRIMARY_HEADER_LEN + 1u];
-    size_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
+    uint32_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
     ASSERT_TRUE(n == sizeof(buf));
 
     /* One data octet → length count C = 0 (§4.1.3.5.3). */
@@ -566,7 +566,7 @@ static int test_parse_buffer_length_boundaries(void)
     sp_packet_t parsed;
 
     /* Heap copies of the exact size, so a one-byte over-read is visible to ASan. */
-    for (size_t len = 0; len <= sizeof(wire); len++)
+    for (uint32_t len = 0; len <= sizeof(wire); len++)
     {
         uint8_t *buf = (uint8_t *)malloc(len ? len : 1u);
         if (!buf)

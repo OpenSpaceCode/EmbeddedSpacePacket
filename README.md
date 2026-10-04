@@ -146,7 +146,7 @@ sp_set_primary_header(&pkt,
 sp_set_data(&pkt, payload, sizeof(payload));
 
 uint8_t buf[256];
-size_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
+uint32_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
 if (n == 0)
 {
     /* NULL args, empty data, or buffer too small */
