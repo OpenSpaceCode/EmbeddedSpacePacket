@@ -35,6 +35,7 @@ $(LIB_PATH): $(OBJ_PATH)
 	$(AR) rcs $(LIB_PATH) $(OBJ_PATH)
 
 example: $(EXAMPLE_PATH)
+		./$(EXAMPLE_PATH)
 
 $(EXAMPLE_PATH): $(LIB_PATH) examples/main.c $(PUBLIC_HEADERS)
 	mkdir -p $(dir $@)
