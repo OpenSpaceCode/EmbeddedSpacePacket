@@ -89,14 +89,6 @@ int sp_packet_parse(sp_packet_t *out, const uint8_t *buf, size_t buf_len)
     if (((first >> 13) & 0x7u) != SP_PACKET_VERSION)
         return 0;
 
-    out->ph.version = SP_PACKET_VERSION;
-    out->ph.type = (unsigned)((first >> 12) & 0x1u);
-    out->ph.sec_hdr_flag = (unsigned)((first >> 11) & 0x1u);
-    out->ph.apid = (unsigned)(first & 0x07FFu);
-    out->ph.seq_flags = (unsigned)((second >> 14) & 0x3u);
-    out->ph.seq_count = (unsigned)(second & 0x3FFFu);
-    out->ph.packet_length = length_field;
-
     if (length_field >= SP_PDF_MAX_LEN)
         return 0;
 
@@ -105,6 +97,14 @@ int sp_packet_parse(sp_packet_t *out, const uint8_t *buf, size_t buf_len)
     if (buf_len < (size_t)SP_PRIMARY_HEADER_LEN + data_len)
         return 0;
 
+    /* All checks passed: out is written only from here on, so a failed parse leaves it intact. */
+    out->ph.version = SP_PACKET_VERSION;
+    out->ph.type = (unsigned)((first >> 12) & 0x1u);
+    out->ph.sec_hdr_flag = (unsigned)((first >> 11) & 0x1u);
+    out->ph.apid = (unsigned)(first & 0x07FFu);
+    out->ph.seq_flags = (unsigned)((second >> 14) & 0x3u);
+    out->ph.seq_count = (unsigned)(second & 0x3FFFu);
+    out->ph.packet_length = length_field;
     out->data = &buf[SP_PRIMARY_HEADER_LEN];
     out->data_len = data_len;
 

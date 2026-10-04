@@ -137,7 +137,7 @@ size_t sp_packet_serialize(const sp_packet_t *pkt, uint8_t *buf, size_t buf_len)
  * @brief Parse a wire-format Space Packet.
  *
  * On success, @p out->data points into @p buf (zero-copy). Keep @p buf alive
- * as long as the parsed packet is in use.
+ * as long as the parsed packet is in use. On failure, @p out is left unchanged.
  *
  * @param[out] out     Decoded packet.
  * @param[in]  buf     Wire buffer to parse.

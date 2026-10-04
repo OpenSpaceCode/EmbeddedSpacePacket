@@ -397,6 +397,38 @@ static int test_roundtrip_max_length(void)
     return 0;
 }
 
+static int test_parse_failure_leaves_out_untouched(void)
+{
+    /* Each buffer has header fields that differ from the sentinel, and fails a different check. */
+    const uint8_t bad_version[] = {0x3F, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0xAA};
+    const uint8_t max_length[] = {0x1F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xAA};
+    const uint8_t truncated[] = {0x1F, 0xFF, 0xFF, 0xFF, 0x00, 0x05, 0xAA};
+    const uint8_t *const cases[] = {bad_version, max_length, truncated};
+    const uint8_t sentinel_data[] = {0x11, 0x22};
+
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++)
+    {
+        sp_packet_t out;
+        sp_packet_init(&out);
+        sp_set_primary_header(&out, SP_PACKET_TYPE_TM, 0, 0x123, SP_SEQ_FLAG_FIRST_SEGMENT, 7);
+        sp_set_data(&out, sentinel_data, sizeof(sentinel_data));
+        out.ph.packet_length = 0x55;
+
+        ASSERT_TRUE(!sp_packet_parse(&out, cases[i], sizeof(bad_version)));
+
+        ASSERT_EQ_INT(0, out.ph.version);
+        ASSERT_EQ_INT(SP_PACKET_TYPE_TM, out.ph.type);
+        ASSERT_EQ_INT(0, out.ph.sec_hdr_flag);
+        ASSERT_EQ_INT(0x123, out.ph.apid);
+        ASSERT_EQ_INT(SP_SEQ_FLAG_FIRST_SEGMENT, out.ph.seq_flags);
+        ASSERT_EQ_INT(7, out.ph.seq_count);
+        ASSERT_EQ_INT(0x55, out.ph.packet_length);
+        ASSERT_TRUE(out.data == sentinel_data);
+        ASSERT_EQ_INT(sizeof(sentinel_data), out.data_len);
+    }
+    return 0;
+}
+
 /* --- Boundary tests ------------------------------------------------------- */
 
 static int test_serialize_buffer_size_boundary(void)
@@ -569,6 +601,7 @@ test_result_t test_space_packet_run_all(void)
     RUN_TEST(test_parse_rejects_nonzero_version);
     RUN_TEST(test_parse_rejects_max_length_field);
     RUN_TEST(test_roundtrip_max_length);
+    RUN_TEST(test_parse_failure_leaves_out_untouched);
     RUN_TEST(test_serialize_buffer_size_boundary);
     RUN_TEST(test_serialize_size_boundaries);
     RUN_TEST(test_roundtrip_min_length);
