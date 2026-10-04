@@ -26,6 +26,9 @@ extern "C"
  */
 #define SP_PDF_MAX_LEN 65535U
 
+/** @brief Packet Version Number of a Space Packet (CCSDS 133.0-B-2 §4.1.3.2). */
+#define SP_PACKET_VERSION 0U
+
 /**
  * @brief Sequence Flags wire encoding (CCSDS 133.0-B-2 §4.1.3.4.2).
  *
@@ -49,16 +52,18 @@ typedef enum
  * @brief Decoded CCSDS Space Packet primary header fields (CCSDS 133.0-B-2 §4.1.3).
  *
  * @note Do not serialise this struct directly; use sp_packet_serialize().
+ * @note Bit-fields are plain @c unsigned: enum-typed bit-fields are implementation-defined in C99.
+ *       @p type and @p seq_flags hold ::sp_packet_type_t and ::sp_seq_flag_t values.
  */
 typedef struct
 {
-    unsigned version : 3;        /**< Packet Version Number — always 0 on transmit (§4.1.3.2). */
-    sp_packet_type_t type : 1;   /**< Packet Type (see ::sp_packet_type_t). */
-    unsigned sec_hdr_flag : 1;   /**< Secondary Header Flag: 1 if a secondary header is present. */
-    unsigned apid : 11;          /**< Application Process Identifier (11 bits). */
-    sp_seq_flag_t seq_flags : 2; /**< Sequence Flags (see ::sp_seq_flag_t). */
-    unsigned seq_count : 14;     /**< Packet Sequence Count, modulo-16384 per APID (§4.1.3.4.3). */
-    uint16_t packet_length;      /**< Raw Packet Data Length field: (data octets) − 1 (§4.1.3.5). */
+    unsigned version : 3;      /**< Packet Version Number — always 0 (§4.1.3.2). */
+    unsigned type : 1;         /**< Packet Type (see ::sp_packet_type_t). */
+    unsigned sec_hdr_flag : 1; /**< Secondary Header Flag: 1 if a secondary header is present. */
+    unsigned apid : 11;        /**< Application Process Identifier (11 bits). */
+    unsigned seq_flags : 2;    /**< Sequence Flags (see ::sp_seq_flag_t). */
+    unsigned seq_count : 14;   /**< Packet Sequence Count, modulo-16384 per APID (§4.1.3.4.3). */
+    uint16_t packet_length;    /**< Raw Packet Data Length field: (data octets) − 1 (§4.1.3.5). */
 } sp_primary_header_t;
 
 /**
@@ -137,7 +142,8 @@ size_t sp_packet_serialize(const sp_packet_t *pkt, uint8_t *buf, size_t buf_len)
  * @param[out] out     Decoded packet.
  * @param[in]  buf     Wire buffer to parse.
  * @param[in]  buf_len Buffer length in bytes.
- * @return 1 on success, 0 on failure (NULL args, declared data length above
+ * @return 1 on success, 0 on failure (NULL args, non-zero Packet Version Number, declared data
+ * length above
  *         ::SP_PDF_MAX_LEN, or buffer shorter than declared data length).
  */
 int sp_packet_parse(sp_packet_t *out, const uint8_t *buf, size_t buf_len);

@@ -19,7 +19,7 @@ the source end user").
 
 - **Primary Header serializer / parser** — big-endian, bit-exact per CCSDS §4.1.3
 - **Sequence Flags** — wire values match the standard (`UNSEGMENTED = 0b11 = 3`)
-- **Version enforcement** — always serializes Packet Version Number as `000` (§4.1.3.2)
+- **Version enforcement** — always serializes Packet Version Number as `000` and rejects any other value on parse (§4.1.3.2)
 - **Zero allocation** — no dynamic memory inside the library; caller supplies all buffers
 - **Minimal footprint** — single header + single source file, no external dependencies
 - **Pure C99** — no OS primitives, suitable for bare-metal targets

@@ -22,11 +22,11 @@ void sp_set_primary_header(sp_packet_t *pkt,
 {
     if (!pkt)
         return;
-    pkt->ph.version = 0;
-    pkt->ph.type = (sp_packet_type_t)((unsigned)(type) & 0x1u);
+    pkt->ph.version = SP_PACKET_VERSION;
+    pkt->ph.type = (unsigned)(type) & 0x1u;
     pkt->ph.sec_hdr_flag = (unsigned)(sec_hdr_flag ? 1u : 0u);
     pkt->ph.apid = (unsigned)(apid & 0x07FFu);
-    pkt->ph.seq_flags = (sp_seq_flag_t)((unsigned)(seq_flags) & 0x3u);
+    pkt->ph.seq_flags = (unsigned)(seq_flags) & 0x3u;
     pkt->ph.seq_count = (unsigned)(seq_count & 0x3FFFu);
 }
 
@@ -59,7 +59,7 @@ size_t sp_packet_serialize(const sp_packet_t *pkt, uint8_t *buf, size_t buf_len)
         (uint16_t)(((pkt->ph.type & 0x1u) << 12) | ((pkt->ph.sec_hdr_flag & 0x1u) << 11) |
                    (pkt->ph.apid & 0x07FFu));
     const uint16_t second =
-        (uint16_t)(((unsigned)(pkt->ph.seq_flags & 0x3u) << 14) | (pkt->ph.seq_count & 0x3FFFu));
+        (uint16_t)(((pkt->ph.seq_flags & 0x3u) << 14) | (pkt->ph.seq_count & 0x3FFFu));
     const uint16_t length = (uint16_t)(pkt->data_len - 1u);
 
     buf[0] = (uint8_t)(first >> 8);
@@ -85,11 +85,15 @@ int sp_packet_parse(sp_packet_t *out, const uint8_t *buf, size_t buf_len)
     const uint16_t second = ((uint16_t)buf[2] << 8) | buf[3];
     const uint16_t length_field = ((uint16_t)buf[4] << 8) | buf[5];
 
-    out->ph.version = (unsigned)((first >> 13) & 0x7u);
-    out->ph.type = (sp_packet_type_t)((first >> 12) & 0x1u);
+    /* Only version 000 identifies a Space Packet (CCSDS 133.0-B-2 §4.1.3.2). */
+    if (((first >> 13) & 0x7u) != SP_PACKET_VERSION)
+        return 0;
+
+    out->ph.version = SP_PACKET_VERSION;
+    out->ph.type = (unsigned)((first >> 12) & 0x1u);
     out->ph.sec_hdr_flag = (unsigned)((first >> 11) & 0x1u);
     out->ph.apid = (unsigned)(first & 0x07FFu);
-    out->ph.seq_flags = (sp_seq_flag_t)((second >> 14) & 0x3u);
+    out->ph.seq_flags = (unsigned)((second >> 14) & 0x3u);
     out->ph.seq_count = (unsigned)(second & 0x3FFFu);
     out->ph.packet_length = length_field;
 

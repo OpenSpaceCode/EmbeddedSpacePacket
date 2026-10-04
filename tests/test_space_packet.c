@@ -313,12 +313,26 @@ static int test_parse_data_far_too_short(void)
     return ok ? 1 : 0;
 }
 
+static int test_parse_rejects_nonzero_version(void)
+{
+    /* Valid 7-byte packet except for the version bits (top 3 bits of byte 0). */
+    for (unsigned version = 1; version <= 7u; version++)
+    {
+        uint8_t buf[7] = {0x08, 0x00, 0xC0, 0x00, 0x00, 0x00, 0xAA};
+        buf[0] = (uint8_t)(buf[0] | (version << 5));
+        sp_packet_t parsed;
+        if (sp_packet_parse(&parsed, buf, sizeof(buf)))
+            return 1;
+    }
+    return 0;
+}
+
 static int test_parse_rejects_max_length_field(void)
 {
     /* length_field=0xFFFF → 65536 octets, beyond SP_PDF_MAX_LEN; reject even if the buffer is
      * large enough, and never accept it as a zero-length packet. */
-    static uint8_t buf[SP_PRIMARY_HEADER_LEN + SP_PDF_MAX_LEN + 1U] = {0x08, 0x00, 0x00,
-                                                                       0x00, 0xFF, 0xFF};
+    static uint8_t buf[SP_PRIMARY_HEADER_LEN + SP_PDF_MAX_LEN + 1U] =
+        {0x08, 0x00, 0x00, 0x00, 0xFF, 0xFF};
     sp_packet_t parsed;
     if (sp_packet_parse(&parsed, buf, SP_PRIMARY_HEADER_LEN))
         return 1;
@@ -364,6 +378,7 @@ test_result_t test_space_packet_run_all(void)
     RUN_TEST(test_parse_data_just_short);
     RUN_TEST(test_parse_data_truncated);
     RUN_TEST(test_parse_data_far_too_short);
+    RUN_TEST(test_parse_rejects_nonzero_version);
     RUN_TEST(test_parse_rejects_max_length_field);
     RUN_TEST(test_roundtrip_max_length);
 
