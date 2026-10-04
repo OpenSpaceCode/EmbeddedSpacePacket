@@ -16,7 +16,9 @@ static int test_roundtrip_basic(void)
     size_t buf_len = sp_packet_serialize_size(&pkt);
     uint8_t *buf = (uint8_t *)malloc(buf_len);
     if (!buf)
+    {
         return 1;
+    }
     size_t n = sp_packet_serialize(&pkt, buf, buf_len);
     if (n == 0)
     {
@@ -58,7 +60,9 @@ static int test_roundtrip_with_secheader_flag(void)
     size_t buf_len = sp_packet_serialize_size(&pkt);
     uint8_t *buf = (uint8_t *)malloc(buf_len);
     if (!buf)
+    {
         return 1;
+    }
     size_t n = sp_packet_serialize(&pkt, buf, buf_len);
     if (n == 0)
     {
@@ -104,12 +108,16 @@ static int test_highlevel_api(void)
     uint8_t buf[256];
     size_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
     if (n == 0)
+    {
         return 1;
+    }
 
     sp_packet_t parsed;
     int ok = sp_packet_parse(&parsed, buf, n);
     if (!ok)
+    {
         return 1;
+    }
 
     ASSERT_EQ_INT(parsed.ph.apid, 0x456);
     ASSERT_EQ_INT(parsed.ph.seq_count, 42);
@@ -126,15 +134,25 @@ static int test_null_pointers(void)
     uint8_t buf[64];
 
     if (sp_packet_serialize_size(NULL) != 0)
+    {
         return 1;
+    }
     if (sp_packet_serialize(NULL, buf, sizeof(buf)) != 0)
+    {
         return 1;
+    }
     if (sp_packet_serialize(&pkt, NULL, sizeof(buf)) != 0)
+    {
         return 1;
+    }
     if (sp_packet_parse(NULL, buf, sizeof(buf)))
+    {
         return 1;
+    }
     if (sp_packet_parse(&pkt, NULL, sizeof(buf)))
+    {
         return 1;
+    }
 
     sp_packet_init(NULL);
     sp_set_primary_header(NULL, SP_PACKET_TYPE_TM, 0, 0, SP_SEQ_FLAG_UNSEGMENTED, 0);
@@ -161,17 +179,23 @@ static int test_sequence_flags(void)
         uint8_t buf[256];
         size_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
         if (n == 0)
+        {
             return 1;
+        }
 
         /* Verify wire bits directly: seq flags are bits 16-17, i.e. top 2 bits of buf[2]. */
         unsigned wire_flags = (unsigned)(buf[2] >> 6) & 0x3u;
         if (wire_flags != (unsigned)flags[i])
+        {
             return 1;
+        }
 
         sp_packet_t parsed;
         int ok = sp_packet_parse(&parsed, buf, n);
         if (!ok)
+        {
             return 1;
+        }
         ASSERT_EQ_INT(parsed.ph.seq_flags, flags[i]);
     }
 
@@ -189,7 +213,9 @@ static int test_version_is_zero(void)
     uint8_t buf[32];
     size_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
     if (n == 0)
+    {
         return 1;
+    }
 
     /* Version is bits 0-2 of byte 0, i.e. the top 3 bits. */
     unsigned version_bits = (unsigned)(buf[0] >> 5) & 0x7u;
@@ -198,7 +224,9 @@ static int test_version_is_zero(void)
     sp_packet_t parsed;
     int ok = sp_packet_parse(&parsed, buf, n);
     if (!ok)
+    {
         return 1;
+    }
     ASSERT_EQ_INT(parsed.ph.version, 0);
 
     return 0;
@@ -215,12 +243,16 @@ static int test_type_and_fields(void)
     uint8_t buf[256];
     size_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
     if (n == 0)
+    {
         return 1;
+    }
 
     sp_packet_t parsed;
     int ok = sp_packet_parse(&parsed, buf, n);
     if (!ok)
+    {
         return 1;
+    }
 
     ASSERT_EQ_INT(parsed.ph.version, 0);
     ASSERT_EQ_INT(parsed.ph.type, SP_PACKET_TYPE_TC);
@@ -304,12 +336,16 @@ static int test_bitfield_masking(void)
     uint8_t buf[256];
     size_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
     if (n == 0)
+    {
         return 1;
+    }
 
     sp_packet_t parsed;
     int ok = sp_packet_parse(&parsed, buf, n);
     if (!ok)
+    {
         return 1;
+    }
 
     ASSERT_EQ_INT(parsed.ph.version, 0);              /* always 0, not masked from input */
     ASSERT_EQ_INT(parsed.ph.type, SP_PACKET_TYPE_TC); /* TC = 1 */
@@ -357,7 +393,9 @@ static int test_parse_rejects_nonzero_version(void)
         buf[0] = (uint8_t)(buf[0] | (version << 5));
         sp_packet_t parsed;
         if (sp_packet_parse(&parsed, buf, sizeof(buf)))
+        {
             return 1;
+        }
     }
     return 0;
 }
@@ -370,7 +408,9 @@ static int test_parse_rejects_max_length_field(void)
         {0x08, 0x00, 0x00, 0x00, 0xFF, 0xFF};
     sp_packet_t parsed;
     if (sp_packet_parse(&parsed, buf, SP_PRIMARY_HEADER_LEN))
+    {
         return 1;
+    }
     return sp_packet_parse(&parsed, buf, sizeof(buf)) ? 1 : 0;
 }
 
@@ -379,7 +419,9 @@ static int test_roundtrip_max_length(void)
     static uint8_t data[SP_PDF_MAX_LEN];
     static uint8_t buf[SP_PRIMARY_HEADER_LEN + SP_PDF_MAX_LEN];
     for (size_t i = 0; i < sizeof(data); i++)
+    {
         data[i] = (uint8_t)(i * 31u);
+    }
 
     sp_packet_t pkt;
     sp_packet_init(&pkt);
@@ -447,9 +489,11 @@ static int test_serialize_buffer_size_boundary(void)
     int rc = 1;
 
     if (one_short && exact)
+    {
         rc = !((sp_packet_serialize(&pkt, one_short, need - 1u) == 0) &&
                (sp_packet_serialize(&pkt, exact, need) == need) &&
                (memcmp(&exact[SP_PRIMARY_HEADER_LEN], data, sizeof(data)) == 0));
+    }
 
     free(one_short);
     free(exact);
@@ -505,7 +549,9 @@ static int test_parse_buffer_length_boundaries(void)
     {
         uint8_t *buf = (uint8_t *)malloc(len ? len : 1u);
         if (!buf)
+        {
             return 1;
+        }
         memcpy(buf, wire, len);
         int ok = sp_packet_parse(&parsed, buf, len);
         int data_ok = ok && (parsed.data_len == 1) && (parsed.data[0] == 0xAA);
@@ -513,9 +559,13 @@ static int test_parse_buffer_length_boundaries(void)
 
         /* Header-only (6) and anything shorter must fail; only the full 7 bytes parse. */
         if (len < sizeof(wire))
+        {
             ASSERT_TRUE(!ok);
+        }
         else
+        {
             ASSERT_TRUE(data_ok);
+        }
     }
     return 0;
 }

@@ -16,7 +16,9 @@ static uint16_t crc16_ccitt(const uint8_t *data, size_t len)
     {
         crc ^= (uint16_t)((uint16_t)data[i] << 8);
         for (int k = 0; k < 8; ++k)
+        {
             crc = (uint16_t)(((unsigned)crc << 1) ^ ((crc & 0x8000u) ? 0x1021u : 0u));
+        }
     }
     return crc;
 }
@@ -65,7 +67,9 @@ int main(void)
 
     printf("Serialized %zu bytes:\n", n);
     for (size_t i = 0; i < n; ++i)
+    {
         printf("%02X ", buf[i]);
+    }
     printf("\n");
 
     sp_packet_t parsed;

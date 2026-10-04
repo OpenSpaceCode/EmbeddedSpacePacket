@@ -9,7 +9,9 @@
 void sp_packet_init(sp_packet_t *pkt)
 {
     if (!pkt)
+    {
         return;
+    }
     memset(pkt, 0, sizeof(*pkt));
 }
 
@@ -21,7 +23,9 @@ void sp_set_primary_header(sp_packet_t *pkt,
                            uint16_t seq_count)
 {
     if (!pkt)
+    {
         return;
+    }
     pkt->ph.version = SP_PACKET_VERSION;
     pkt->ph.type = (unsigned)(type) & 0x1u;
     pkt->ph.sec_hdr_flag = (unsigned)(sec_hdr_flag ? 1u : 0u);
@@ -33,7 +37,9 @@ void sp_set_primary_header(sp_packet_t *pkt,
 void sp_set_data(sp_packet_t *pkt, const uint8_t *data, uint16_t data_len)
 {
     if (!pkt)
+    {
         return;
+    }
     pkt->data = data;
     pkt->data_len = data_len;
 }
@@ -41,18 +47,24 @@ void sp_set_data(sp_packet_t *pkt, const uint8_t *data, uint16_t data_len)
 size_t sp_packet_serialize_size(const sp_packet_t *pkt)
 {
     if (!pkt || pkt->data_len == 0)
+    {
         return 0;
+    }
     return (size_t)SP_PRIMARY_HEADER_LEN + pkt->data_len;
 }
 
 size_t sp_packet_serialize(const sp_packet_t *pkt, uint8_t *buf, size_t buf_len)
 {
     if (!pkt || !buf || !pkt->data || pkt->data_len == 0)
+    {
         return 0;
+    }
 
     const size_t need = (size_t)SP_PRIMARY_HEADER_LEN + pkt->data_len;
     if (buf_len < need)
+    {
         return 0;
+    }
 
     /* Version bits are always 000 (CCSDS 133.0-B-2 §4.1.3.2). */
     const uint16_t first =
@@ -77,9 +89,13 @@ size_t sp_packet_serialize(const sp_packet_t *pkt, uint8_t *buf, size_t buf_len)
 int sp_packet_parse(sp_packet_t *out, const uint8_t *buf, size_t buf_len)
 {
     if (!out || !buf)
+    {
         return 0;
+    }
     if (buf_len < SP_PRIMARY_HEADER_LEN)
+    {
         return 0;
+    }
 
     const uint16_t first = (uint16_t)(((unsigned)buf[0] << 8) | buf[1]);
     const uint16_t second = (uint16_t)(((unsigned)buf[2] << 8) | buf[3]);
@@ -87,15 +103,21 @@ int sp_packet_parse(sp_packet_t *out, const uint8_t *buf, size_t buf_len)
 
     /* Only version 000 identifies a Space Packet (CCSDS 133.0-B-2 §4.1.3.2). */
     if (((first >> 13) & 0x7u) != SP_PACKET_VERSION)
+    {
         return 0;
+    }
 
     if (length_field >= SP_PDF_MAX_LEN)
+    {
         return 0;
+    }
 
     const uint16_t data_len = (uint16_t)(length_field + 1u);
 
     if (buf_len < (size_t)SP_PRIMARY_HEADER_LEN + data_len)
+    {
         return 0;
+    }
 
     /* All checks passed: out is written only from here on, so a failed parse leaves it intact. */
     out->ph.version = SP_PACKET_VERSION;
