@@ -34,7 +34,7 @@ void sp_set_primary_header(sp_packet_t *pkt,
     pkt->ph.seq_count = (unsigned)(seq_count & 0x3FFFu);
 }
 
-void sp_set_data(sp_packet_t *pkt, const uint8_t *data, uint16_t data_len)
+void sp_set_data(sp_packet_t *pkt, const uint8_t *data, uint32_t data_len)
 {
     if (!pkt)
     {
@@ -46,7 +46,7 @@ void sp_set_data(sp_packet_t *pkt, const uint8_t *data, uint16_t data_len)
 
 size_t sp_packet_serialize_size(const sp_packet_t *pkt)
 {
-    if (!pkt || pkt->data_len == 0)
+    if ((!pkt) || (pkt->data_len == 0) || (pkt->data_len > SP_PDF_MAX_LEN))
     {
         return 0;
     }
@@ -55,12 +55,17 @@ size_t sp_packet_serialize_size(const sp_packet_t *pkt)
 
 size_t sp_packet_serialize(const sp_packet_t *pkt, uint8_t *buf, size_t buf_len)
 {
-    if (!pkt || !buf || !pkt->data || pkt->data_len == 0)
+    if ((!pkt) || (!buf) || (!pkt->data))
+    {
+        return 0;
+    }
+    if ((pkt->data_len == 0) || (pkt->data_len > SP_PDF_MAX_LEN))
     {
         return 0;
     }
 
-    const size_t need = (size_t)SP_PRIMARY_HEADER_LEN + pkt->data_len;
+    /* 32-bit arithmetic: the largest packet (6 + 65536 octets) does not fit in 16 bits. */
+    const uint32_t need = (uint32_t)SP_PRIMARY_HEADER_LEN + pkt->data_len;
     if (buf_len < need)
     {
         return 0;
@@ -83,7 +88,7 @@ size_t sp_packet_serialize(const sp_packet_t *pkt, uint8_t *buf, size_t buf_len)
 
     memcpy(&buf[SP_PRIMARY_HEADER_LEN], pkt->data, pkt->data_len);
 
-    return need;
+    return (size_t)need;
 }
 
 int sp_packet_parse(sp_packet_t *out, const uint8_t *buf, size_t buf_len)
@@ -107,14 +112,10 @@ int sp_packet_parse(sp_packet_t *out, const uint8_t *buf, size_t buf_len)
         return 0;
     }
 
-    if (length_field >= SP_PDF_MAX_LEN)
-    {
-        return 0;
-    }
+    /* 32-bit: a length count of 0xFFFF denotes 65536 octets (CCSDS 133.0-B-2 §4.1.3.5.3). */
+    const uint32_t data_len = (uint32_t)length_field + 1u;
 
-    const uint16_t data_len = (uint16_t)(length_field + 1u);
-
-    if (buf_len < (size_t)SP_PRIMARY_HEADER_LEN + data_len)
+    if (buf_len < ((uint32_t)SP_PRIMARY_HEADER_LEN + data_len))
     {
         return 0;
     }

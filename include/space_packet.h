@@ -20,11 +20,12 @@ extern "C"
 #define SP_PRIMARY_HEADER_LEN 6U
 
 /**
- * @brief Maximum Packet Data Field length bytes.
+ * @brief Maximum Packet Data Field length in bytes (CCSDS 133.0-B-2 §4.1.3.5.3).
  *
- * C = (Total Number of Octets in the Packet Data Field) – 1.
+ * The 16-bit length count is C = (Total Number of Octets in the Packet Data Field) – 1,
+ * so C = 0xFFFF denotes 65536 octets.
  */
-#define SP_PDF_MAX_LEN 65535U
+#define SP_PDF_MAX_LEN 65536UL
 
 /** @brief Packet Version Number of a Space Packet (CCSDS 133.0-B-2 §4.1.3.2). */
 #define SP_PACKET_VERSION 0U
@@ -76,7 +77,7 @@ typedef struct
     sp_primary_header_t ph; /**< Decoded primary header fields. */
     const uint8_t
         *data; /**< Packet Data Field — mission-defined layout (secondary header + user data). */
-    uint16_t data_len; /**< Packet Data Field length in bytes. */
+    uint32_t data_len; /**< Packet Data Field length in bytes (1 to ::SP_PDF_MAX_LEN). */
 } sp_packet_t;
 
 /**
@@ -111,15 +112,16 @@ void sp_set_primary_header(sp_packet_t *pkt,
  *
  * @param[out] pkt      Target packet. No-op if NULL.
  * @param[in]  data     Packet Data Field (not copied; caller keeps memory alive).
- * @param[in]  data_len Length of @p data in bytes.
+ * @param[in]  data_len Length of @p data in bytes (1 to ::SP_PDF_MAX_LEN).
  */
-void sp_set_data(sp_packet_t *pkt, const uint8_t *data, uint16_t data_len);
+void sp_set_data(sp_packet_t *pkt, const uint8_t *data, uint32_t data_len);
 
 /**
  * @brief Return the serialised size of a packet.
  *
  * @param[in] pkt Packet to measure.
- * @return ::SP_PRIMARY_HEADER_LEN + data_len, or 0 if @p pkt is NULL or data_len is 0.
+ * @return ::SP_PRIMARY_HEADER_LEN + data_len, or 0 if @p pkt is NULL or data_len is outside
+ *         1 to ::SP_PDF_MAX_LEN.
  */
 size_t sp_packet_serialize_size(const sp_packet_t *pkt);
 
@@ -129,7 +131,8 @@ size_t sp_packet_serialize_size(const sp_packet_t *pkt);
  * @param[in]  pkt     Packet to serialise.
  * @param[out] buf     Output buffer.
  * @param[in]  buf_len Buffer capacity in bytes.
- * @return Bytes written, or 0 on error (NULL args, empty data, or buffer too small).
+ * @return Bytes written, or 0 on error (NULL args, data length outside 1 to ::SP_PDF_MAX_LEN,
+ *         or buffer too small).
  */
 size_t sp_packet_serialize(const sp_packet_t *pkt, uint8_t *buf, size_t buf_len);
 
@@ -142,9 +145,8 @@ size_t sp_packet_serialize(const sp_packet_t *pkt, uint8_t *buf, size_t buf_len)
  * @param[out] out     Decoded packet.
  * @param[in]  buf     Wire buffer to parse.
  * @param[in]  buf_len Buffer length in bytes.
- * @return 1 on success, 0 on failure (NULL args, non-zero Packet Version Number, declared data
- * length above
- *         ::SP_PDF_MAX_LEN, or buffer shorter than declared data length).
+ * @return 1 on success, 0 on failure (NULL args, non-zero Packet Version Number, or buffer
+ *         shorter than declared data length).
  */
 int sp_packet_parse(sp_packet_t *out, const uint8_t *buf, size_t buf_len);
 

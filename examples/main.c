@@ -55,7 +55,7 @@ int main(void)
                           0x100, /* APID */
                           SP_SEQ_FLAG_UNSEGMENTED,
                           1 /* sequence count */);
-    sp_set_data(&pkt, pkt_data, (uint16_t)off);
+    sp_set_data(&pkt, pkt_data, (uint32_t)off);
 
     uint8_t buf[256];
     size_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
@@ -100,10 +100,10 @@ int main(void)
     const uint8_t *pay = parsed.data + sec_total;
     size_t pay_len = crc_area - sec_total;
 
-    printf("APID=0x%03X seq_count=%u data_len=%u CRC OK\n",
+    printf("APID=0x%03X seq_count=%u data_len=%lu CRC OK\n",
            parsed.ph.apid,
            parsed.ph.seq_count,
-           parsed.data_len);
+           (unsigned long)parsed.data_len);
     printf("Payload: ");
     fwrite(pay, 1, pay_len, stdout);
     printf("\n");

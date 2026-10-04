@@ -400,18 +400,39 @@ static int test_parse_rejects_nonzero_version(void)
     return 0;
 }
 
-static int test_parse_rejects_max_length_field(void)
+static int test_parse_max_length_field(void)
 {
-    /* length_field=0xFFFF → 65536 octets, beyond SP_PDF_MAX_LEN; reject even if the buffer is
-     * large enough, and never accept it as a zero-length packet. */
-    static uint8_t buf[SP_PRIMARY_HEADER_LEN + SP_PDF_MAX_LEN + 1U] =
+    /* length_field=0xFFFF → 65536 octets, the largest valid Packet Data Field (§4.1.3.5.3).
+     * It must never be mistaken for a zero-length packet. */
+    static uint8_t buf[SP_PRIMARY_HEADER_LEN + SP_PDF_MAX_LEN] =
         {0x08, 0x00, 0x00, 0x00, 0xFF, 0xFF};
     sp_packet_t parsed;
-    if (sp_packet_parse(&parsed, buf, SP_PRIMARY_HEADER_LEN))
-    {
-        return 1;
-    }
-    return sp_packet_parse(&parsed, buf, sizeof(buf)) ? 1 : 0;
+
+    /* Bare header and one-octet-short buffers are truncated packets. */
+    ASSERT_TRUE(!sp_packet_parse(&parsed, buf, SP_PRIMARY_HEADER_LEN));
+    ASSERT_TRUE(!sp_packet_parse(&parsed, buf, sizeof(buf) - 1u));
+
+    ASSERT_TRUE(sp_packet_parse(&parsed, buf, sizeof(buf)));
+    ASSERT_EQ_INT(0xFFFF, parsed.ph.packet_length);
+    ASSERT_TRUE(parsed.data_len == SP_PDF_MAX_LEN);
+    ASSERT_TRUE(parsed.data == &buf[SP_PRIMARY_HEADER_LEN]);
+    return 0;
+}
+
+static int test_serialize_rejects_oversized_data(void)
+{
+    /* One octet above the maximum cannot be expressed in the 16-bit length field. */
+    static const uint8_t data[SP_PDF_MAX_LEN + 1u] = {0};
+    static uint8_t buf[SP_PRIMARY_HEADER_LEN + SP_PDF_MAX_LEN + 1u];
+
+    sp_packet_t pkt;
+    sp_packet_init(&pkt);
+    sp_set_primary_header(&pkt, SP_PACKET_TYPE_TM, 0, 0x100, SP_SEQ_FLAG_UNSEGMENTED, 1);
+    sp_set_data(&pkt, data, SP_PDF_MAX_LEN + 1u);
+
+    ASSERT_TRUE(sp_packet_serialize_size(&pkt) == 0);
+    ASSERT_TRUE(sp_packet_serialize(&pkt, buf, sizeof(buf)) == 0);
+    return 0;
 }
 
 static int test_roundtrip_max_length(void)
@@ -433,8 +454,8 @@ static int test_roundtrip_max_length(void)
 
     sp_packet_t parsed;
     ASSERT_TRUE(sp_packet_parse(&parsed, buf, n));
-    ASSERT_EQ_INT(0xFFFE, parsed.ph.packet_length);
-    ASSERT_EQ_INT(SP_PDF_MAX_LEN, parsed.data_len);
+    ASSERT_EQ_INT(0xFFFF, parsed.ph.packet_length);
+    ASSERT_TRUE(parsed.data_len == SP_PDF_MAX_LEN);
     ASSERT_EQ_MEM(parsed.data, data, sizeof(data));
     return 0;
 }
@@ -443,9 +464,9 @@ static int test_parse_failure_leaves_out_untouched(void)
 {
     /* Each buffer has header fields that differ from the sentinel, and fails a different check. */
     const uint8_t bad_version[] = {0x3F, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0xAA};
-    const uint8_t max_length[] = {0x1F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xAA};
+    const uint8_t max_length_truncated[] = {0x1F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xAA};
     const uint8_t truncated[] = {0x1F, 0xFF, 0xFF, 0xFF, 0x00, 0x05, 0xAA};
-    const uint8_t *const cases[] = {bad_version, max_length, truncated};
+    const uint8_t *const cases[] = {bad_version, max_length_truncated, truncated};
     const uint8_t sentinel_data[] = {0x11, 0x22};
 
     for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++)
@@ -649,7 +670,8 @@ test_result_t test_space_packet_run_all(void)
     RUN_TEST(test_parse_data_truncated);
     RUN_TEST(test_parse_data_far_too_short);
     RUN_TEST(test_parse_rejects_nonzero_version);
-    RUN_TEST(test_parse_rejects_max_length_field);
+    RUN_TEST(test_parse_max_length_field);
+    RUN_TEST(test_serialize_rejects_oversized_data);
     RUN_TEST(test_roundtrip_max_length);
     RUN_TEST(test_parse_failure_leaves_out_untouched);
     RUN_TEST(test_serialize_buffer_size_boundary);
