@@ -6,23 +6,24 @@ CFLAGS ?= -O2 -Iinclude -Wall -Wextra -Wpedantic -Wconversion -Wshadow \
 		  -std=c99
 AR ?= ar
 
-PREFIX ?= /usr/local
-
 LIBNAME = libspacepacket.a
 BUILD_DIR = build
 LIB_PATH = $(BUILD_DIR)/$(LIBNAME)
 OBJ_PATH = $(BUILD_DIR)/src/space_packet.o
 EXAMPLE_PATH = $(BUILD_DIR)/examples/spacepacket_example
 CTEST_PATH = $(BUILD_DIR)/tests/ctest
-COVERAGE_MIN ?= 95
+
+PUBLIC_HEADERS = include/space_packet.h
+TEST_SOURCES = tests/unit_tests.c tests/test_space_packet.c
+TEST_HEADERS = tests/cunit.h tests/test_runners.h
 
 all: lib example test
 
 lib: $(LIB_PATH)
 
-$(OBJ_PATH): src/space_packet.c
+$(OBJ_PATH): src/space_packet.c $(PUBLIC_HEADERS)
 	mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c src/space_packet.c -o $(OBJ_PATH)
+	$(CC) $(CFLAGS) -Iinclude -c src/space_packet.c -o $(OBJ_PATH)
 
 $(LIB_PATH): $(OBJ_PATH)
 	mkdir -p $(dir $@)
@@ -30,16 +31,15 @@ $(LIB_PATH): $(OBJ_PATH)
 
 example: $(EXAMPLE_PATH)
 
-$(EXAMPLE_PATH): lib examples/main.c
+$(EXAMPLE_PATH): $(LIB_PATH) examples/main.c $(PUBLIC_HEADERS)
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -Iinclude examples/main.c $(LIB_PATH) -o $(EXAMPLE_PATH)
 
-
 ctest: $(CTEST_PATH)
 
-$(CTEST_PATH): lib tests/unit_tests.c tests/test_space_packet.c
+$(CTEST_PATH): $(LIB_PATH) $(TEST_SOURCES) $(TEST_HEADERS) $(PUBLIC_HEADERS)
 	mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -Iinclude tests/unit_tests.c tests/test_space_packet.c $(LIB_PATH) -o $(CTEST_PATH)
+	$(CC) $(CFLAGS) -Iinclude $(TEST_SOURCES) $(LIB_PATH) -o $(CTEST_PATH)
 
 test: ctest
 	./$(CTEST_PATH)
@@ -50,4 +50,4 @@ coverage-html:
 clean:
 	rm -rf $(BUILD_DIR)
 
-.PHONY: all lib example test ctest coverage-html ci clean install
+.PHONY: all lib example test ctest coverage-html clean

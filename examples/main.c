@@ -1,4 +1,4 @@
-#include "../include/space_packet.h"
+#include "space_packet.h"
 
 #include <stdint.h>
 #include <stdio.h>
