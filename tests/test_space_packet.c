@@ -397,6 +397,157 @@ static int test_roundtrip_max_length(void)
     return 0;
 }
 
+/* --- Boundary tests ------------------------------------------------------- */
+
+static int test_serialize_buffer_size_boundary(void)
+{
+    const uint8_t data[] = {1, 2, 3, 4};
+    const size_t need = SP_PRIMARY_HEADER_LEN + sizeof(data);
+
+    sp_packet_t pkt;
+    sp_packet_init(&pkt);
+    sp_set_primary_header(&pkt, SP_PACKET_TYPE_TM, 0, 0x100, SP_SEQ_FLAG_UNSEGMENTED, 1);
+    sp_set_data(&pkt, data, sizeof(data));
+
+    /* Heap buffers of the exact size, so a one-byte overrun is visible to ASan. */
+    uint8_t *one_short = (uint8_t *)malloc(need - 1u);
+    uint8_t *exact = (uint8_t *)malloc(need);
+    int rc = 1;
+
+    if (one_short && exact)
+        rc = !((sp_packet_serialize(&pkt, one_short, need - 1u) == 0) &&
+               (sp_packet_serialize(&pkt, exact, need) == need) &&
+               (memcmp(&exact[SP_PRIMARY_HEADER_LEN], data, sizeof(data)) == 0));
+
+    free(one_short);
+    free(exact);
+    return rc;
+}
+
+static int test_serialize_size_boundaries(void)
+{
+    static const uint8_t data[SP_PDF_MAX_LEN] = {0};
+    sp_packet_t pkt;
+    sp_packet_init(&pkt);
+
+    sp_set_data(&pkt, data, 1);
+    ASSERT_TRUE(sp_packet_serialize_size(&pkt) == (SP_PRIMARY_HEADER_LEN + 1u));
+
+    sp_set_data(&pkt, data, SP_PDF_MAX_LEN);
+    ASSERT_TRUE(sp_packet_serialize_size(&pkt) == (SP_PRIMARY_HEADER_LEN + SP_PDF_MAX_LEN));
+    return 0;
+}
+
+static int test_roundtrip_min_length(void)
+{
+    const uint8_t data[] = {0x5A};
+    sp_packet_t pkt;
+    sp_packet_init(&pkt);
+    sp_set_primary_header(&pkt, SP_PACKET_TYPE_TM, 0, 0x100, SP_SEQ_FLAG_UNSEGMENTED, 1);
+    sp_set_data(&pkt, data, sizeof(data));
+
+    uint8_t buf[SP_PRIMARY_HEADER_LEN + 1u];
+    size_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
+    ASSERT_TRUE(n == sizeof(buf));
+
+    /* One data octet → length count C = 0 (§4.1.3.5.3). */
+    ASSERT_EQ_INT(0x00, buf[4]);
+    ASSERT_EQ_INT(0x00, buf[5]);
+
+    sp_packet_t parsed;
+    ASSERT_TRUE(sp_packet_parse(&parsed, buf, n));
+    ASSERT_EQ_INT(0, parsed.ph.packet_length);
+    ASSERT_EQ_INT(1, parsed.data_len);
+    ASSERT_EQ_INT(0x5A, parsed.data[0]);
+    return 0;
+}
+
+static int test_parse_buffer_length_boundaries(void)
+{
+    /* Smallest valid packet: 6-byte header (length_field=0) + 1 data octet. */
+    const uint8_t wire[] = {0x08, 0x00, 0xC0, 0x00, 0x00, 0x00, 0xAA};
+    sp_packet_t parsed;
+
+    /* Heap copies of the exact size, so a one-byte over-read is visible to ASan. */
+    for (size_t len = 0; len <= sizeof(wire); len++)
+    {
+        uint8_t *buf = (uint8_t *)malloc(len ? len : 1u);
+        if (!buf)
+            return 1;
+        memcpy(buf, wire, len);
+        int ok = sp_packet_parse(&parsed, buf, len);
+        int data_ok = ok && (parsed.data_len == 1) && (parsed.data[0] == 0xAA);
+        free(buf);
+
+        /* Header-only (6) and anything shorter must fail; only the full 7 bytes parse. */
+        if (len < sizeof(wire))
+            ASSERT_TRUE(!ok);
+        else
+            ASSERT_TRUE(data_ok);
+    }
+    return 0;
+}
+
+static int test_parse_ignores_trailing_bytes(void)
+{
+    /* length_field=1 → data_len=2; two extra bytes follow the packet. */
+    const uint8_t buf[] = {0x08, 0x00, 0xC0, 0x00, 0x00, 0x01, 0x11, 0x22, 0x33, 0x44};
+    sp_packet_t parsed;
+    ASSERT_TRUE(sp_packet_parse(&parsed, buf, sizeof(buf)));
+    ASSERT_EQ_INT(2, parsed.data_len);
+    ASSERT_TRUE(parsed.data == &buf[SP_PRIMARY_HEADER_LEN]);
+    return 0;
+}
+
+static int test_header_fields_all_zero(void)
+{
+    const uint8_t data[] = {0x00};
+    sp_packet_t pkt;
+    sp_packet_init(&pkt);
+    sp_set_primary_header(&pkt, SP_PACKET_TYPE_TM, 0, 0x000, SP_SEQ_FLAG_CONTINUING_SEGMENT, 0);
+    sp_set_data(&pkt, data, sizeof(data));
+
+    uint8_t buf[SP_PRIMARY_HEADER_LEN + 1u];
+    ASSERT_TRUE(sp_packet_serialize(&pkt, buf, sizeof(buf)) == sizeof(buf));
+
+    const uint8_t expected[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    ASSERT_EQ_MEM(buf, expected, sizeof(expected));
+
+    sp_packet_t parsed;
+    ASSERT_TRUE(sp_packet_parse(&parsed, buf, sizeof(buf)));
+    ASSERT_EQ_INT(SP_PACKET_TYPE_TM, parsed.ph.type);
+    ASSERT_EQ_INT(0, parsed.ph.sec_hdr_flag);
+    ASSERT_EQ_INT(0, parsed.ph.apid);
+    ASSERT_EQ_INT(SP_SEQ_FLAG_CONTINUING_SEGMENT, parsed.ph.seq_flags);
+    ASSERT_EQ_INT(0, parsed.ph.seq_count);
+    return 0;
+}
+
+static int test_header_fields_all_max(void)
+{
+    const uint8_t data[] = {0x00};
+    sp_packet_t pkt;
+    sp_packet_init(&pkt);
+    sp_set_primary_header(&pkt, SP_PACKET_TYPE_TC, 1, 0x7FF, SP_SEQ_FLAG_UNSEGMENTED, 0x3FFF);
+    sp_set_data(&pkt, data, sizeof(data));
+
+    uint8_t buf[SP_PRIMARY_HEADER_LEN + 1u];
+    ASSERT_TRUE(sp_packet_serialize(&pkt, buf, sizeof(buf)) == sizeof(buf));
+
+    /* Version stays 000, so the first octet is 0x1F, not 0xFF. */
+    const uint8_t expected[] = {0x1F, 0xFF, 0xFF, 0xFF, 0x00, 0x00};
+    ASSERT_EQ_MEM(buf, expected, sizeof(expected));
+
+    sp_packet_t parsed;
+    ASSERT_TRUE(sp_packet_parse(&parsed, buf, sizeof(buf)));
+    ASSERT_EQ_INT(SP_PACKET_TYPE_TC, parsed.ph.type);
+    ASSERT_EQ_INT(1, parsed.ph.sec_hdr_flag);
+    ASSERT_EQ_INT(0x7FF, parsed.ph.apid);
+    ASSERT_EQ_INT(SP_SEQ_FLAG_UNSEGMENTED, parsed.ph.seq_flags);
+    ASSERT_EQ_INT(0x3FFF, parsed.ph.seq_count);
+    return 0;
+}
+
 test_result_t test_space_packet_run_all(void)
 {
     RUN_TEST(test_roundtrip_basic);
@@ -418,6 +569,13 @@ test_result_t test_space_packet_run_all(void)
     RUN_TEST(test_parse_rejects_nonzero_version);
     RUN_TEST(test_parse_rejects_max_length_field);
     RUN_TEST(test_roundtrip_max_length);
+    RUN_TEST(test_serialize_buffer_size_boundary);
+    RUN_TEST(test_serialize_size_boundaries);
+    RUN_TEST(test_roundtrip_min_length);
+    RUN_TEST(test_parse_buffer_length_boundaries);
+    RUN_TEST(test_parse_ignores_trailing_bytes);
+    RUN_TEST(test_header_fields_all_zero);
+    RUN_TEST(test_header_fields_all_max);
 
     test_result_t r;
     r.total = cunit_total_tests;
