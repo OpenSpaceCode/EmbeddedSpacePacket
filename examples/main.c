@@ -82,7 +82,8 @@ int main(void)
         return 3;
     }
     size_t crc_area = parsed.data_len - 2;
-    uint16_t crc_recv = ((uint16_t)parsed.data[crc_area] << 8) | parsed.data[crc_area + 1];
+    uint16_t crc_recv =
+        (uint16_t)(((unsigned)parsed.data[crc_area] << 8) | parsed.data[crc_area + 1]);
     uint16_t crc_calc = crc16_ccitt(parsed.data, crc_area);
     if (crc_recv != crc_calc)
     {

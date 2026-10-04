@@ -81,9 +81,9 @@ int sp_packet_parse(sp_packet_t *out, const uint8_t *buf, size_t buf_len)
     if (buf_len < SP_PRIMARY_HEADER_LEN)
         return 0;
 
-    const uint16_t first = ((uint16_t)buf[0] << 8) | buf[1];
-    const uint16_t second = ((uint16_t)buf[2] << 8) | buf[3];
-    const uint16_t length_field = ((uint16_t)buf[4] << 8) | buf[5];
+    const uint16_t first = (uint16_t)(((unsigned)buf[0] << 8) | buf[1]);
+    const uint16_t second = (uint16_t)(((unsigned)buf[2] << 8) | buf[3]);
+    const uint16_t length_field = (uint16_t)(((unsigned)buf[4] << 8) | buf[5]);
 
     /* Only version 000 identifies a Space Packet (CCSDS 133.0-B-2 §4.1.3.2). */
     if (((first >> 13) & 0x7u) != SP_PACKET_VERSION)

@@ -3,8 +3,8 @@ CC ?= cc
 OPT ?= -O2
 SANITIZE_OPT = -O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined \
 			   -fno-sanitize-recover=all
-# Stronger warnings for code quality
-CFLAGS ?= $(OPT) -Iinclude -Wall -Wextra -Wpedantic -Wconversion -Wshadow \
+# Stronger warnings for code quality; any warning fails the build
+CFLAGS ?= $(OPT) -Iinclude -Werror -Wall -Wextra -Wpedantic -Wconversion -Wshadow \
 		  -Wcast-align -Wcast-qual -Wpointer-arith -Wformat=2 \
 		  -Wmissing-prototypes -Wstrict-prototypes -Wredundant-decls -Wundef \
 		  -std=c99
