@@ -256,6 +256,41 @@ static int test_empty_data(void)
     return (n == 0) ? 0 : 1; /* serializer must reject empty Packet Data Field */
 }
 
+static int test_zero_length_with_data_pointer(void)
+{
+    sp_packet_t pkt;
+    sp_packet_init(&pkt);
+    const uint8_t data[] = {0x01};
+    sp_set_primary_header(&pkt, SP_PACKET_TYPE_TM, 0, 0x100, SP_SEQ_FLAG_UNSEGMENTED, 1);
+    sp_set_data(&pkt, data, 0);
+
+    uint8_t buf[32];
+    ASSERT_EQ_INT(0, sp_packet_serialize_size(&pkt));
+    ASSERT_EQ_INT(0, sp_packet_serialize(&pkt, buf, sizeof(buf)));
+    return 0;
+}
+
+static int test_secondary_header_flag_on_wire(void)
+{
+    sp_packet_t pkt;
+    sp_packet_init(&pkt);
+    const uint8_t data[] = {0x01};
+    sp_set_primary_header(&pkt, SP_PACKET_TYPE_TM, 1, 0x100, SP_SEQ_FLAG_UNSEGMENTED, 1);
+    sp_set_data(&pkt, data, sizeof(data));
+
+    uint8_t buf[32];
+    size_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
+    ASSERT_TRUE(n != 0);
+
+    /* Secondary Header Flag is bit 4 of the header, i.e. bit 3 of byte 0. */
+    ASSERT_EQ_INT(1, (buf[0] >> 3) & 0x1u);
+
+    sp_packet_t parsed;
+    ASSERT_TRUE(sp_packet_parse(&parsed, buf, n));
+    ASSERT_EQ_INT(1, parsed.ph.sec_hdr_flag);
+    return 0;
+}
+
 static int test_bitfield_masking(void)
 {
     sp_packet_t pkt;
@@ -374,6 +409,8 @@ test_result_t test_space_packet_run_all(void)
     RUN_TEST(test_type_and_fields);
     RUN_TEST(test_buffer_too_small);
     RUN_TEST(test_empty_data);
+    RUN_TEST(test_zero_length_with_data_pointer);
+    RUN_TEST(test_secondary_header_flag_on_wire);
     RUN_TEST(test_bitfield_masking);
     RUN_TEST(test_parse_data_just_short);
     RUN_TEST(test_parse_data_truncated);
