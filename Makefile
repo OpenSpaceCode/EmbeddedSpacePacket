@@ -1,6 +1,8 @@
 CC ?= cc
+# Optimisation / instrumentation flags; overridden by tools/coverage_html.sh
+OPT ?= -O2
 # Stronger warnings for code quality
-CFLAGS ?= -O2 -Iinclude -Wall -Wextra -Wpedantic -Wconversion -Wshadow \
+CFLAGS ?= $(OPT) -Iinclude -Wall -Wextra -Wpedantic -Wconversion -Wshadow \
 		  -Wcast-align -Wcast-qual -Wpointer-arith -Wformat=2 \
 		  -Wmissing-prototypes -Wstrict-prototypes -Wredundant-decls -Wundef \
 		  -std=c99
