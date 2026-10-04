@@ -16,6 +16,16 @@ extern "C"
 {
 #endif
 
+/** @brief Primary Header length in bytes (CCSDS 133.0-B-2 §4.1.3.1). */
+#define SP_PRIMARY_HEADER_LEN 6U
+
+/**
+ * @brief Maximum Packet Data Field length bytes.
+ *
+ * C = (Total Number of Octets in the Packet Data Field) – 1.
+ */
+#define SP_PDF_MAX_LEN 65535U
+
 /**
  * @brief Sequence Flags wire encoding (CCSDS 133.0-B-2 §4.1.3.4.2).
  *
@@ -104,7 +114,7 @@ void sp_set_data(sp_packet_t *pkt, const uint8_t *data, uint16_t data_len);
  * @brief Return the serialised size of a packet.
  *
  * @param[in] pkt Packet to measure.
- * @return 6 + data_len, or 0 if @p pkt is NULL or data_len is 0.
+ * @return ::SP_PRIMARY_HEADER_LEN + data_len, or 0 if @p pkt is NULL or data_len is 0.
  */
 size_t sp_packet_serialize_size(const sp_packet_t *pkt);
 
@@ -127,7 +137,8 @@ size_t sp_packet_serialize(const sp_packet_t *pkt, uint8_t *buf, size_t buf_len)
  * @param[out] out     Decoded packet.
  * @param[in]  buf     Wire buffer to parse.
  * @param[in]  buf_len Buffer length in bytes.
- * @return 1 on success, 0 on failure (NULL args or buffer shorter than declared data length).
+ * @return 1 on success, 0 on failure (NULL args, declared data length above
+ *         ::SP_PDF_MAX_LEN, or buffer shorter than declared data length).
  */
 int sp_packet_parse(sp_packet_t *out, const uint8_t *buf, size_t buf_len);
 

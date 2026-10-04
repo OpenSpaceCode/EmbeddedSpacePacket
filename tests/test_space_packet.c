@@ -313,6 +313,41 @@ static int test_parse_data_far_too_short(void)
     return ok ? 1 : 0;
 }
 
+static int test_parse_rejects_max_length_field(void)
+{
+    /* length_field=0xFFFF → 65536 octets, beyond SP_PDF_MAX_LEN; reject even if the buffer is
+     * large enough, and never accept it as a zero-length packet. */
+    static uint8_t buf[SP_PRIMARY_HEADER_LEN + SP_PDF_MAX_LEN + 1U] = {0x08, 0x00, 0x00,
+                                                                       0x00, 0xFF, 0xFF};
+    sp_packet_t parsed;
+    if (sp_packet_parse(&parsed, buf, SP_PRIMARY_HEADER_LEN))
+        return 1;
+    return sp_packet_parse(&parsed, buf, sizeof(buf)) ? 1 : 0;
+}
+
+static int test_roundtrip_max_length(void)
+{
+    static uint8_t data[SP_PDF_MAX_LEN];
+    static uint8_t buf[SP_PRIMARY_HEADER_LEN + SP_PDF_MAX_LEN];
+    for (size_t i = 0; i < sizeof(data); i++)
+        data[i] = (uint8_t)(i * 31u);
+
+    sp_packet_t pkt;
+    sp_packet_init(&pkt);
+    sp_set_primary_header(&pkt, SP_PACKET_TYPE_TM, 0, 0x100, SP_SEQ_FLAG_UNSEGMENTED, 1);
+    sp_set_data(&pkt, data, SP_PDF_MAX_LEN);
+
+    size_t n = sp_packet_serialize(&pkt, buf, sizeof(buf));
+    ASSERT_TRUE(n == sizeof(buf));
+
+    sp_packet_t parsed;
+    ASSERT_TRUE(sp_packet_parse(&parsed, buf, n));
+    ASSERT_EQ_INT(0xFFFE, parsed.ph.packet_length);
+    ASSERT_EQ_INT(SP_PDF_MAX_LEN, parsed.data_len);
+    ASSERT_EQ_MEM(parsed.data, data, sizeof(data));
+    return 0;
+}
+
 test_result_t test_space_packet_run_all(void)
 {
     RUN_TEST(test_roundtrip_basic);
@@ -329,6 +364,8 @@ test_result_t test_space_packet_run_all(void)
     RUN_TEST(test_parse_data_just_short);
     RUN_TEST(test_parse_data_truncated);
     RUN_TEST(test_parse_data_far_too_short);
+    RUN_TEST(test_parse_rejects_max_length_field);
+    RUN_TEST(test_roundtrip_max_length);
 
     test_result_t r;
     r.total = cunit_total_tests;
