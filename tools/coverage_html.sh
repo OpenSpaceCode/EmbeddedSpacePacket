@@ -36,6 +36,8 @@ gcovr -r "${ROOT_DIR}" \
   --output "${OUT_FILE}" \
   --txt - \
   --txt-summary \
+  --fail-under-line 100 \
+  --fail-under-branch 100 \
   2> >(grep -v '^(INFO)' >&2)
 
 echo "Coverage HTML report written to: ${OUT_FILE}"
