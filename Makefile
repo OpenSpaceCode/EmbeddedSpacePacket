@@ -57,7 +57,8 @@ coverage-html:
 # visible. The instrumented build is removed afterwards, on success and on failure.
 sanitize:
 	@$(MAKE) --no-print-directory clean >/dev/null
-	@$(MAKE) --no-print-directory lib example ctest OPT="$(SANITIZE_OPT)" >/dev/null
+	@$(MAKE) --no-print-directory lib example ctest OPT="$(SANITIZE_OPT)" >/dev/null \
+		|| { $(MAKE) --no-print-directory clean >/dev/null; exit 1; }
 	@mkdir -p $(SANITIZE_DIR)
 	@echo "Sanitizers (ASan + UBSan):"
 	@./$(CTEST_PATH) >$(SANITIZE_DIR)/unit_tests.log \
