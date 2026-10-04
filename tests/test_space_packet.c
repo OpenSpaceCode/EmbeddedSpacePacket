@@ -1,5 +1,5 @@
-#include "space_packet.h"
 #include "cunit.h"
+#include "space_packet.h"
 #include "test_runners.h"
 
 #include <stdlib.h>
